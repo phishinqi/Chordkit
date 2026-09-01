@@ -4,6 +4,7 @@ import * as core from '@chordkit/core';
 import * as midi from '@chordkit/midi';
 import * as pipeline from '@chordkit/pipeline';
 import * as legacy from '@chordkit/legacy';
+import * as harmony from '@chordkit/harmony';
 import { DEFAULT_EVENTS, DEFAULT_NOTES, json, parseJson } from './runtime';
 import { t, type Locale } from './i18n';
 import { decodeWorkspace, encodeWorkspace, loadWorkspace, saveWorkspace, type WorkspaceState } from './workspace';
@@ -11,11 +12,12 @@ import { playNotes } from './audio';
 import { listMidiOutputs, sendMidiNotes, type BrowserMidiAccess, type BrowserMidiOutput, type MidiNavigator } from './systemMidi';
 import { JsonPanel, ApiExplorer } from './components/Panels';
 import { Piano } from './components/Piano';
+import { HarmonyLab } from './components/HarmonyLab';
 import './styles.css';
 
-type Tab = 'home' | 'core' | 'midi' | 'live' | 'pipeline' | 'legacy' | 'explorer';
+type Tab = 'home' | 'core' | 'midi' | 'live' | 'pipeline' | 'harmony' | 'legacy' | 'explorer';
 const tabs: Array<[Tab, keyof ReturnType<typeof t>, typeof Music]> = [
-  ['home', 'home', Sparkles], ['core', 'core', Music], ['midi', 'midi', Waves], ['live', 'live', Radio], ['pipeline', 'pipeline', Cable], ['legacy', 'legacy', RotateCcw], ['explorer', 'explorer', Grid2X2],
+  ['home', 'home', Sparkles], ['core', 'core', Music], ['midi', 'midi', Waves], ['live', 'live', Radio], ['pipeline', 'pipeline', Cable], ['harmony', 'harmony', Activity], ['legacy', 'legacy', RotateCcw], ['explorer', 'explorer', Grid2X2],
 ];
 const callbackWorker = new Worker(new URL('./workers/callback.worker.ts', import.meta.url), { type: 'module' });
 
@@ -99,8 +101,9 @@ export default function App() {
       {tab === 'midi' && <Lab title={tx.midi} kicker="02 / SMF → EVENTS → WINDOWS → TIMELINE"><section className="dropzone"><Upload size={28}/><label>{tx.upload}<input type="file" accept=".mid,.midi,audio/midi" onChange={(event) => event.target.files?.[0] && readMidi(event.target.files[0])}/></label><p>{tx.noMidi}</p></section>{midiError && <p className="error">{tx.error}: {midiError}</p>}<section className="lab-grid midi-results"><Metric label={tx.events} value={(midiData as { events?: unknown[] } | null)?.events?.length ?? 0}/><Metric label={tx.spans} value={(midiData as { noteSpans?: unknown[] } | null)?.noteSpans?.length ?? 0}/><Metric label={tx.segments} value={(midiResult as { segments?: unknown[] } | null)?.segments?.length ?? 0}/></section><JsonPanel locale={locale} value={midiResult ?? { hint:'Upload a Standard MIDI File to inspect parseMidi() and analyzeMidi() output.' }}/></Lab>}
       {tab === 'live' && <Lab title={tx.live} kicker="03 / WEB MIDI + WATERMARKED ASYNCITERABLE"><section className="lab-grid"><div className="card"><h3>Web MIDI</h3><p>{tx.mobile}</p><button className="primary" onClick={connectMidi}><Radio size={15}/>{tx.scanMidi}</button><p className="status">{webMidi || tx.webMidiMissing}</p><label className="midi-output">{tx.midiOutput}<select value={midiOutputId} onChange={(event) => setMidiOutputId(event.target.value)} disabled={midiOutputs.length === 0}><option value="">{tx.noMidiOutput}</option>{midiOutputs.map((output) => <option value={output.id} key={output.id}>{output.manufacturer ? `${output.manufacturer} — ` : ''}{output.name ?? output.id}</option>)}</select></label>{midiOutputId && <button onClick={sendCurrentChordToOutput}><Music size={15}/>{tx.midiOutputReady}</button>}<JsonPanel locale={locale} value={{ inputs: liveEvents, outputs: midiOutputs.map((output) => ({ id: output.id, name: output.name, manufacturer: output.manufacturer })), selectedOutput: midiOutputId }}/></div><div className="card"><h3>{tx.stream}</h3><p>noteOn/noteOff → watermark → end</p><button className="primary" onClick={runStream}><Activity size={15}/>{tx.run}</button><JsonPanel locale={locale} value={streamResult ?? { snapshots: [], stable: [] }}/></div></section></Lab>}
       {tab === 'pipeline' && <Lab title={tx.pipeline} kicker="04 / PROFILES · CACHE · STAGES"><section className="lab-grid"><div className="card"><label>{tx.profile}<select value={workspace.profile} onChange={(event) => setWorkspace({ ...workspace, profile: event.target.value as WorkspaceState['profile'] })}>{['general','pop','jazz','classical'].map((profile) => <option key={profile}>{profile}</option>)}</select></label><h2>{profiled.primary?.name}</h2><p>{profiled.primary?.score}</p><div className="metric-line"><span>{tx.cache}</span><code>{json(pipelineAnalyzer.cacheStats)}</code></div><button onClick={() => pipelineAnalyzer.clearCaches()}>{tx.clear}</button></div><div className="card"><h3>{tx.stages}</h3><ol>{pipeline.createAnalysisPipeline({ strategy: workspace.profile }).stages.map((stage) => <li key={stage.name}>{stage.name}</li>)}</ol><JsonPanel locale={locale} value={profiled}/></div></section></Lab>}
-      {tab === 'legacy' && <Lab title={tx.legacy} kicker="05 / COMPATIBILITY ADAPTER"><section className="lab-grid"><div className="card"><h3>{tx.legacyCompare}</h3><p>{workspace.notes.join(', ')}</p><JsonPanel locale={locale} value={{ legacy: legacy.detect(workspace.notes), modern: analysis }}/></div><div className="card"><h3>Legacy helpers</h3><JsonPanel locale={locale} value={{ pitchClasses: legacy.getPitchClasses(workspace.notes), intervals: legacy.getIntervals(60, midiFromNotes(workspace.notes)) }}/></div></section></Lab>}
-      {tab === 'explorer' && <Lab title={tx.explorer} kicker="06 / EVERY RUNTIME EXPORT + TYPE CATALOG"><ApiExplorer locale={locale}/></Lab>}
+      {tab === 'harmony' && <Lab title={tx.harmony} kicker="05 / KEY · ROMAN · VOICE LEADING"><HarmonyLab locale={locale} midiTimeline={midiResult as import('@chordkit/midi').ChordTimeline | null} /></Lab>}
+      {tab === 'legacy' && <Lab title={tx.legacy} kicker="06 / COMPATIBILITY ADAPTER"><section className="lab-grid"><div className="card"><h3>{tx.legacyCompare}</h3><p>{workspace.notes.join(', ')}</p><JsonPanel locale={locale} value={{ legacy: legacy.detect(workspace.notes), modern: analysis }}/></div><div className="card"><h3>Legacy helpers</h3><JsonPanel locale={locale} value={{ pitchClasses: legacy.getPitchClasses(workspace.notes), intervals: legacy.getIntervals(60, midiFromNotes(workspace.notes)) }}/></div></section></Lab>}
+      {tab === 'explorer' && <Lab title={tx.explorer} kicker="07 / EVERY RUNTIME EXPORT + TYPE CATALOG"><ApiExplorer locale={locale}/></Lab>}
     </main>
     <footer><span>Chordkit Playground · {tx.beta}</span><span>{tx.privacy}</span></footer>
   </div>;

@@ -2,6 +2,7 @@ import * as core from '@chordkit/core';
 import * as midi from '@chordkit/midi';
 import * as pipeline from '@chordkit/pipeline';
 import * as legacy from '@chordkit/legacy';
+import * as harmony from '@chordkit/harmony';
 import { DEFAULT_EVENTS, DEFAULT_NOTES, runtimes, type RuntimeModule } from './runtime';
 import type { ApiEntry } from './registry';
 
@@ -25,8 +26,9 @@ export async function invoke(entry: ApiEntry, args: unknown[]): Promise<unknown>
     const draft = midi.buildTimeline(DEFAULT_EVENTS);
     return entry.name === 'buildChordWindows' ? midi.buildChordWindows(draft.noteSpans, draft.timing, draft.options) : midi.detectOnsetClusters(draft.noteSpans, draft.timing, draft.options);
   }
+  if (entry.module === 'harmony' && (entry.name === 'analyzeHarmonyNotes' || entry.name === 'analyzeHarmonyPitchClasses')) return fn(DEFAULT_NOTES, { key: { tonic: 'C', mode: 'major' } });
   if (entry.name === 'analyzeEventSnapshots' || entry.name === 'analyzeMidiSnapshots' || entry.name === 'analyzeStableEventStream' || entry.name === 'analyzeStableMidiStream' || entry.name === 'decodeMidiStream') {
-    if (entry.name === 'analyzeEventSnapshots') return collect(pipeline.analyzeEventSnapshots(streamSource()));
+  if (entry.name === 'analyzeEventSnapshots') return collect(pipeline.analyzeEventSnapshots(streamSource()));
     if (entry.name === 'analyzeStableEventStream') return collect(pipeline.analyzeStableEventStream(streamSource()));
     return { message: 'This byte-stream export is available in MIDI Lab after selecting an SMF file.' };
   }

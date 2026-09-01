@@ -77,3 +77,18 @@ Recoverable issues are returned as `info`, `warning` or `error` diagnostics. Exa
 `@phishinqi/chordkit/pipeline` adds `AsyncIterable` interfaces for Node `Readable` and other event sources. `analyzeStableEventStream()` waits for `watermark` or `end` controls and emits only segments ending at or before the confirmed tick. `analyzeEventSnapshots()` emits a complete, revisable timeline after each input and marks the final `end` snapshot with `isFinal: true`.
 
 `decodeMidiStream()` supports arbitrary byte chunk boundaries and buffers complete track payloads rather than the whole file. SMF format 1 track parsing is read-order based; downstream analysis retains stable tick/priority/track/channel/sequence ordering. See [PIPELINE.md](PIPELINE.md) for strategy, cache, and stream examples.
+
+## Harmony timeline adapter
+
+For deterministic key candidates, Roman-numeral analysis, local modulation segments, voice leading, and NCT annotations, pass the finished `ChordTimeline` to `@phishinqi/chordkit/harmony`:
+
+```ts
+import { analyzeHarmonicTimeline } from '@phishinqi/chordkit/harmony';
+
+const tonal = analyzeHarmonicTimeline(analyzeMidi(midiBytes), {
+  key: { tonic: 'C', mode: 'major' },
+  profile: 'classical',
+});
+```
+
+The original timeline API remains unchanged. Harmonic stream snapshots are provisional until a following harmonic window or the final watermark supplies enough NCT context.

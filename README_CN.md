@@ -254,6 +254,19 @@ const timeline = engine.analyze(960);
 
 详见 [MIDI 时间线文档](https://www.google.com/search?q=docs/MIDI-TIMELINE.md) 以了解默认值、诊断信息与完整的时间模型。
 
+### 调性、罗马数字与声部进行
+
+`@phishinqi/chordkit/harmony` 在不改变核心 API 默认输出的前提下，提供确定性的手动/自动调性、罗马数字 AST 与三种渲染、和弦符号进行、局部转调、声部进行、非和弦音和功能和声流式分析。
+
+```ts
+import { analyzeProgression } from '@phishinqi/chordkit/harmony';
+
+const result = analyzeProgression(['Dm7', 'G7', 'Cmaj7'], { auto: true, profile: 'jazz' });
+console.log(result.globalContext.label);
+```
+
+详见 [Harmony 分析](docs/HARMONY.md)。
+
 ### 旧版兼容 API（Legacy API）
 
 在 `0.x` 版本期间，可通过 `@phishinqi/chordkit/legacy` 引入兼容适配器：
@@ -295,6 +308,7 @@ npm run ci
 
 * [架构设计](https://www.google.com/search?q=docs/ARCHITECTURE.md)
 * [MIDI 时间线](https://www.google.com/search?q=docs/MIDI-TIMELINE.md)
+* [Harmony 分析](docs/HARMONY.md)
 * [旧版迁移指南](https://www.google.com/search?q=docs/LEGACY-MIGRATION.md)
 * [测试说明](https://www.google.com/search?q=docs/TESTING.md)
 * [贡献指南](https://www.google.com/search?q=CONTRIBUTING.md)

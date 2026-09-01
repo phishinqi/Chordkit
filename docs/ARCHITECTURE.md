@@ -36,3 +36,7 @@ The separate Pipeline entry point additionally provides AsyncIterable event and 
 ## Compatibility boundary
 
 The root, `./midi`, and `./legacy` exports remain stable. `./legacy` is a deprecated independent wrapper that imports modern core APIs; core, MIDI, and Pipeline code never import legacy.
+
+## Harmony
+
+The `./harmony` entry is an opt-in deterministic functional-harmony layer. It consumes immutable core chord/timeline evidence and never mutates core recognition. It adds manual/automatic tonal contexts, Roman AST renderers, progression segmentation, voice assignment, NCT classification, explicit override provenance, and watermark-aware harmonic stream adapters.

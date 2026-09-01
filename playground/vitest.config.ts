@@ -10,6 +10,7 @@ export default defineConfig({
     '@chordkit/midi': resolve(__dirname, '../src/midi/index.ts'),
     '@chordkit/pipeline': resolve(__dirname, '../src/pipeline/index.ts'),
     '@chordkit/legacy': resolve(__dirname, '../src/legacy/index.ts'),
+    '@chordkit/harmony': resolve(__dirname, '../src/harmony/index.ts'),
   } },
   test: { environment: 'jsdom', include: ['src/**/*.test.{ts,tsx}'] },
 });
