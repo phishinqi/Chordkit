@@ -4,4 +4,3 @@ const COMPOUND_NAMES: Record<number, string> = { 13: 'b9', 14: '9', 15: '#9', 17
 export function intervalName(interval: number): string {
   return COMPOUND_NAMES[interval] ?? SIMPLE_NAMES[((interval % 12) + 12) % 12]!;
 }
-

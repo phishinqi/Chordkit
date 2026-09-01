@@ -7,4 +7,3 @@ export interface NormalizedNote {
   octave: number;
   source: RegisteredNoteInput;
 }
-

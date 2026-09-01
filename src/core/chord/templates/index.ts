@@ -23,4 +23,3 @@ export const CHORD_TEMPLATES: ChordTemplate[] = [
   ...SEVENTH_TEMPLATES,
   ...BASIC_TEMPLATES,
 ];
-

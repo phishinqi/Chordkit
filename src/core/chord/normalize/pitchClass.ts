@@ -29,4 +29,3 @@ export function enharmonicNoteName(pitchClass: number): string | null {
   const aliases: Record<number, string> = { 1: 'C#', 3: 'D#', 6: 'F#', 8: 'G#', 10: 'A#' };
   return aliases[pc] ?? null;
 }
-

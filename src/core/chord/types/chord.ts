@@ -21,4 +21,3 @@ export class ChordInputError extends Error {
     super(message);
   }
 }
-

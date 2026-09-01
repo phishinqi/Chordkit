@@ -10,4 +10,3 @@ export const SEVENTH_TEMPLATES: ChordTemplate[] = [
   { id: 'aug7', quality: 'aug7', intervals: [0, 4, 8, 10], family: 'seventh' },
   { id: '7sus4', quality: '7sus4', intervals: [0, 5, 7, 10], family: 'seventh' },
 ];
-

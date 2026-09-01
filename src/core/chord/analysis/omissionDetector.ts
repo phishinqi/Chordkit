@@ -15,4 +15,3 @@ export function detectOmissions(intervals: readonly number[], templates: readonl
   }
   return matches;
 }
-

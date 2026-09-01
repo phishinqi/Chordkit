@@ -11,4 +11,3 @@ export function complexityFor(candidate: Pick<ChordCandidate, 'root' | 'bass' | 
   const accidentalCount = (candidate.root.match(/[b#]/g) ?? []).length + (candidate.bass?.match(/[b#]/g) ?? []).length;
   return accidentalCount + candidate.omissions.length * 0.4 + candidate.alterations.length * 0.25;
 }
-

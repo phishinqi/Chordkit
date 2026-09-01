@@ -22,4 +22,3 @@ export function parseNote(input: RegisteredNoteInput): NormalizedNote {
   if (midi < 0 || midi > 127) throw new ChordInputError(`Note is outside the MIDI range 0..127: ${input}`);
   return { midi, pitchClass, octave, source: input };
 }
-

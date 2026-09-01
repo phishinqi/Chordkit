@@ -14,4 +14,3 @@ export const BASIC_TEMPLATES: ChordTemplate[] = [
   { id: 'no5', quality: '(no5)', intervals: [0, 4], family: 'basic' },
   { id: 'm-no5', quality: 'm(no5)', intervals: [0, 3], family: 'basic' },
 ];
-

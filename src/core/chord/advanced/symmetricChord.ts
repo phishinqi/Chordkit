@@ -7,4 +7,3 @@ export function symmetricEquivalentNames(candidate: ChordCandidate): string[] {
   const count = candidate.quality === 'dim7' ? 4 : 3;
   return Array.from({ length: count - 1 }, (_, index) => canonicalNoteName(candidate.rootPitchClass + step * (index + 1)) + candidate.quality);
 }
-

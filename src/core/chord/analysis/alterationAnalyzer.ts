@@ -8,4 +8,3 @@ export function analyzeAlterations(intervals: readonly number[]): string[] {
   if (hasCompoundInterval(intervals, 8)) alterations.push('b13');
   return alterations;
 }
-

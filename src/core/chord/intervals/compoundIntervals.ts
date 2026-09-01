@@ -11,4 +11,3 @@ export function hasCompoundInterval(intervals: readonly number[], semitones: num
 export function hasInterval(intervals: readonly number[], semitones: number): boolean {
   return intervals.some((interval) => normalizePitchClass(interval) === normalizePitchClass(semitones));
 }
-

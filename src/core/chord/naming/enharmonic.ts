@@ -4,4 +4,3 @@ export function enharmonicAliases(rootPitchClass: number, quality: string, bass:
   const alternate = enharmonicNoteName(rootPitchClass);
   return alternate ? [`${alternate}${quality}${bass ? `/${bass}` : ''}`] : [];
 }
-

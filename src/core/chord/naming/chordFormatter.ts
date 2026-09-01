@@ -5,4 +5,3 @@ export function formatChord(rootPitchClass: number, quality: string, bassPitchCl
   const bass = bassPitchClass === null || bassPitchClass === rootPitchClass ? null : canonicalNoteName(bassPitchClass);
   return `${root}${quality}${bass ? `/${bass}` : ''}`;
 }
-

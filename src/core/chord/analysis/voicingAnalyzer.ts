@@ -7,4 +7,3 @@ export function analyzeVoicing(notes: readonly NormalizedNote[]): 'closed' | 'op
   if (span >= 13) return 'open';
   return 'closed';
 }
-

@@ -16,4 +16,3 @@ export const EXTENDED_TEMPLATES: ChordTemplate[] = [
   { id: 'm13', quality: 'm13', intervals: [0, 3, 7, 10, 14, 21], family: 'extended', extensions: [9, 13] },
   { id: 'maj13', quality: 'maj13', intervals: [0, 4, 7, 11, 14, 21], family: 'extended', extensions: [9, 13] },
 ];
-

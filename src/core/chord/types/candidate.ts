@@ -33,4 +33,3 @@ export interface ChordRelation {
   target: string;
   description: string;
 }
-

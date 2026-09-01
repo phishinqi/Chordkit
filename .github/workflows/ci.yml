@@ -26,4 +26,3 @@ jobs:
           name: coverage-node-${{ matrix.node }}
           path: coverage/
           retention-days: 14
-

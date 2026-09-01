@@ -45,4 +45,3 @@ The public entry point is `src/core/chord/index.ts`. The engine composes normali
 ## License
 
 GPL-3.0-only. See [LICENSE](LICENSE).
-

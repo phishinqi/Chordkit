@@ -24,4 +24,3 @@ describe('advanced analysis', () => {
     expect(result.primary?.aliases).toContain('C#');
   });
 });
-

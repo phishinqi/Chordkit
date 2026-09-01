@@ -8,4 +8,3 @@ export function rankCandidates(candidates: readonly ChordCandidate[], maxCandida
   }
   return [...unique.values()].sort((a, b) => b.score - a.score || a.complexity - b.complexity || a.name.localeCompare(b.name)).slice(0, maxCandidates);
 }
-

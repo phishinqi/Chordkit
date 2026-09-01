@@ -9,4 +9,3 @@ export function detectDominantFeatures(intervals: readonly number[]): DominantFe
   const alterations = [hasCompoundInterval(intervals, 1) ? 'b9' : null, hasCompoundInterval(intervals, 3) ? '#9' : null, hasCompoundInterval(intervals, 6) ? '#11' : null, hasCompoundInterval(intervals, 8) ? 'b13' : null].filter((value): value is string => value !== null);
   return { isDominant, extensions, alterations };
 }
-

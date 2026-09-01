@@ -7,4 +7,3 @@ export function ambiguityFor(candidates: readonly ChordCandidate[]): AmbiguityLe
   if (difference <= 0.1) return 'medium';
   return 'low';
 }
-

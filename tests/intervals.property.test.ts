@@ -25,4 +25,3 @@ describe('interval properties', () => {
     }), { numRuns: 500, seed: 20260902 });
   });
 });
-

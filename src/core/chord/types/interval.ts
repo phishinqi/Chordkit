@@ -8,4 +8,3 @@ export interface IntervalAnalysis {
   absoluteIntervals: number[];
   compoundIntervals: number[];
 }
-

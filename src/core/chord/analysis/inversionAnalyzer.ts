@@ -6,4 +6,3 @@ export function inversionIndex(rootPitchClass: number, notes: readonly Normalize
   const unique = [...new Set(notes.map((note) => note.pitchClass))];
   return Math.max(1, unique.indexOf(bass.pitchClass) + 1);
 }
-

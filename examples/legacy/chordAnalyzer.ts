@@ -1109,9 +1109,3 @@ export function detect(
 
 // Export for testing
 export { parseNote, getIntervals, matchPattern };
-
-
-
-
-
-

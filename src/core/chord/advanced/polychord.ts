@@ -22,4 +22,3 @@ export function detectPolychord(notes: readonly NormalizedNote[]): ChordCandidat
     evidence: { templateId: template.id, match: 'polychord', inversion: 1, voicing: 'spread', notes: upper.map((note) => note.midi) },
   };
 }
-

@@ -9,4 +9,3 @@ describe('template catalog', () => {
     expect(result.candidates.some((candidate) => candidate.evidence.templateId === template.id && candidate.evidence.match === 'exact')).toBe(true);
   });
 });
-

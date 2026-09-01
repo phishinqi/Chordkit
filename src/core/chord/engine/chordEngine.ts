@@ -86,4 +86,3 @@ export function analyzePitchClassesInternal(input: readonly PitchClassInput[], o
   const primary = ranked[0] ?? null;
   return { primary, alternatives: primary ? ranked.slice(1) : [], candidates: ranked, relations: primary ? harmonicRelations(primary) : [], inputMode: 'pitch-class', ambiguity: primary ? 'high' : 'none' };
 }
-

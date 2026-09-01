@@ -28,4 +28,3 @@ export function intervalsMatch(actual: readonly number[], expected: readonly num
   const key = (interval: number) => interval >= 12 ? `compound:${interval}` : `simple:${normalizePitchClass(interval)}`;
   return [...actual].map(key).sort().every((value, index) => value === [...expected].map(key).sort()[index]);
 }
-

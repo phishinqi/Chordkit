@@ -8,4 +8,3 @@ export const ALTERED_TEMPLATES: ChordTemplate[] = [
   { id: 'maj7sharp11', quality: 'maj7(#11)', intervals: [0, 4, 7, 11, 18], family: 'altered', alterations: ['#11'] },
   { id: '7sus4b9', quality: '7sus4(b9)', intervals: [0, 5, 7, 10, 13], family: 'altered', alterations: ['b9'] },
 ];
-

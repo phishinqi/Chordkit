@@ -9,4 +9,3 @@ export function normalizeNotes(input: readonly RegisteredNoteInput[]): Normalize
   }
   return [...unique.values()].sort((a, b) => a.midi - b.midi);
 }
-

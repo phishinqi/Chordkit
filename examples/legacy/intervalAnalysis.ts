@@ -84,12 +84,3 @@ export function hasInterval(
     const target = normalizePitchClass(semitones);
     return intervals.some(interval => normalizePitchClass(interval) === target);
 }
-
-
-
-
-
-
-
-
-

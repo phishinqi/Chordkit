@@ -550,6 +550,3 @@ export function detectChord(input: NoteInput[]): ChordResult[] {
             return a.complexity - b.complexity;
         });
 }
-
-
-

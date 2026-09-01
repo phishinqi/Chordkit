@@ -10,4 +10,3 @@ export function analyzeChord(input: readonly RegisteredNoteInput[], options: Cho
 export function analyzePitchClasses(input: readonly PitchClassInput[], options: ChordAnalysisOptions = {}): ChordAnalysisResult {
   return analyzePitchClassesInternal(input, options);
 }
-

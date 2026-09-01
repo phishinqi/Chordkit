@@ -13,4 +13,3 @@ export function harmonicRelations(candidate: ChordCandidate): ChordRelation[] {
   if (enharmonic) relations.push({ type: 'enharmonicEquivalent', source: candidate.name, target: `${enharmonic}${candidate.quality}${candidate.bass ? `/${candidate.bass}` : ''}`, description: 'Enharmonic root spelling' });
   return relations;
 }
-

@@ -11,4 +11,3 @@ export const CHORD_FIXTURES = [
   { label: 'diminished seventh', input: ['C4', 'Eb4', 'Gb4', 'A4'], primary: 'Cdim7' },
   { label: 'altered dominant', input: ['C3', 'E3', 'G3', 'Bb3', 'Db4'], primary: 'C7(b9)' },
 ] as const;
-

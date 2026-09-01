@@ -48,4 +48,3 @@ describe('register-aware chord engine', () => {
     expect(() => analyzePitchClasses([12])).toThrow(ChordInputError);
   });
 });
-
