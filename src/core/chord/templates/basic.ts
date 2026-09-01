@@ -9,8 +9,13 @@ export const BASIC_TEMPLATES: ChordTemplate[] = [
   { id: 'sus2', quality: 'sus2', intervals: [0, 2, 7], family: 'basic' },
   { id: 'sus4', quality: 'sus4', intervals: [0, 5, 7], family: 'basic' },
   { id: 'add4', quality: 'add4', intervals: [0, 4, 5, 7], family: 'basic' },
-  { id: '6', quality: '6', intervals: [0, 4, 7, 9], family: 'basic' },
-  { id: 'm6', quality: 'm6', intervals: [0, 3, 7, 9], family: 'basic' },
+  { id: 'add6', quality: '6', intervals: [0, 4, 7, 9], family: 'basic', legacyAliases: ['6'] },
+  { id: 'm-add6', quality: 'm6', intervals: [0, 3, 7, 9], family: 'basic', legacyAliases: ['m6'] },
   { id: 'no5', quality: '(no5)', intervals: [0, 4], family: 'basic' },
   { id: 'm-no5', quality: 'm(no5)', intervals: [0, 3], family: 'basic' },
+  { id: 'sus2-no5', quality: 'sus2(no5)', intervals: [0, 2], family: 'basic' },
+  { id: 'sus4-no5', quality: 'sus4(no5)', intervals: [0, 5], family: 'basic' },
+  { id: 'sus2add3', quality: 'sus2add3', intervals: [0, 2, 4], family: 'basic' },
+  { id: 'm-add4', quality: 'm(add4)', intervals: [0, 3, 5, 7], family: 'basic', legacyAliases: ['m add4'] },
+
 ];

@@ -38,6 +38,20 @@ Chordkit is a register-aware TypeScript chord-analysis library. It keeps pitch-c
 
 `analyzeChord` accepts MIDI `0..127` values or octave-qualified note names. Use `analyzePitchClasses` for registerless sets; its results are explicitly register-ambiguous.
 
+## Legacy compatibility / Legacy 兼容
+
+During v0.x, the old-shaped API is available from the deprecated subpath:
+
+```ts
+import { detect, detectChord } from '@phishinqi/chordkit/legacy';
+
+detect(['C', 'E', 'G']);             // octave-less legacy input
+detect([{ midi: 60 }, { midi: 64 }, { midi: 67 }]);
+detect(['C', 'E', 'G'], { get_chord_type: false });
+```
+
+The adapter is implemented on top of the new core. Legacy aliases remain available, while `relations` is the source of truth for tritone substitutions, symmetric equivalents, and enharmonic equivalents. The deprecated adapter is planned for removal in v1.0. See `docs/LEGACY-MIGRATION.md`.
+
 ## Architecture
 
 The public entry point is `src/core/chord/index.ts`. The engine composes normalization, interval analysis, templates, structural analysis, advanced harmonic relations, scoring, and canonical naming. Legacy implementations are retained in `examples/legacy` for historical reference only.

@@ -8,17 +8,20 @@ export function detectPolychord(notes: readonly NormalizedNote[]): ChordCandidat
   if (notes.length < 4) return null;
   const bass = notes[0]!;
   const upper = notes.slice(1);
-  const root = upper[0]!;
-  const matches = matchTemplates(calculateIntervals(root, upper).absoluteIntervals, BASIC_TEMPLATES);
+  const splitIndex = notes.length >= 6 ? Math.floor(notes.length / 2) : 1;
+  const lower = notes.slice(0, splitIndex);
+  const upperStructure = notes.slice(splitIndex);
+  const root = upperStructure[0]!;
+  const matches = matchTemplates(calculateIntervals(root, upperStructure).absoluteIntervals, BASIC_TEMPLATES);
   const template = matches.find((candidate) => ['major', 'minor', 'diminished', 'augmented'].includes(candidate.id));
   if (!template) return null;
   const rootName = canonicalNoteName(root.pitchClass);
   const bassName = canonicalNoteName(bass.pitchClass);
-  const analysis = calculateIntervals(root, upper);
+  const analysis = calculateIntervals(root, upperStructure);
   return {
-    root: rootName, rootPitchClass: root.pitchClass, quality: template.quality, bass: bassName,
-    name: `${rootName}${template.quality}/${bassName}`, score: 0.58, complexity: 1.2,
+    root: rootName, rootPitchClass: root.pitchClass, rootMidi: analysis.rootMidi, quality: template.quality, bass: bassName,
+    name: `${rootName}${template.quality}/${bassName}`, score: 0.65, complexity: 1.2,
     omissions: [], extensions: [], alterations: [], aliases: [], intervalAnalysis: analysis,
-    evidence: { templateId: template.id, match: 'polychord', inversion: 1, voicing: 'spread', notes: upper.map((note) => note.midi) },
+    evidence: { templateId: template.id, match: 'polychord', inversion: lower.length, voicing: 'spread', notes: upperStructure.map((note) => note.midi) },
   };
 }

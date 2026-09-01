@@ -7,7 +7,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
       include: ['src/core/chord/**/*.ts'],
-      exclude: ['src/core/chord/index.ts', 'src/core/chord/**/index.ts', 'src/core/chord/types/**/*.ts'],
+      exclude: ['src/core/chord/index.ts', 'src/core/chord/**/index.ts', 'src/core/chord/types/**/*.ts', 'src/legacy/**/*.ts'],
       thresholds: { lines: 80, functions: 80, branches: 80, statements: 80 },
     },
   },
