@@ -260,6 +260,22 @@ detectChord(['C', 'E', 'G']);
 
 The adapter preserves its old result shape and `confidence` range, while naming and ranking are backed by the evidence-driven core. It is deprecated and planned for removal in `v1.0`. Read the [legacy migration guide](docs/LEGACY-MIGRATION.md) before adopting the core API.
 
+
+### Pipeline, strategies, cache, and streams
+
+The stable root and MIDI APIs remain synchronous and cache-free. Advanced composition is available from a separate entry point:
+
+```ts
+import { createAnalysisPipeline, createAnalyzer, analyzeStableEventStream } from '@phishinqi/chordkit/pipeline';
+
+const analyzer = createAnalyzer({ strategy: 'jazz', normalizationCapacity: 128, analysisCapacity: 256 });
+analyzer.analyzeChord(['C3', 'E3', 'G3', 'Bb3', 'D4']);
+
+const pipeline = createAnalysisPipeline({ strategy: 'pop' });
+pipeline.analyzeMidi(midiBytes);
+```
+
+Built-in profiles are `general`, `pop`, `jazz`, and `classical`. Custom strategies can compose templates, scoring, and post-processing without replacing interval/root evidence; custom analysis caching requires an explicit stable `cacheKey`. Streaming APIs accept `AsyncIterable` MIDI events or bytes and provide both watermark-finalized segments and revisable snapshots. See [Pipeline API](docs/PIPELINE.md).
 ### Development
 
 ```bash

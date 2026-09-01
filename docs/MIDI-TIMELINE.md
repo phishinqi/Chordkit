@@ -71,3 +71,9 @@ const timeline = engine.analyze(960);
 ## Diagnostics
 
 Recoverable issues are returned as `info`, `warning` or `error` diagnostics. Examples include filtered low-velocity notes, unmatched note-off events, unclosed file-end notes, ignored SysEx and unknown meta events. Invalid SMF headers, format 2, SMPTE division, truncated chunks and invalid VLQs throw `ChordInputError`.
+
+## Pipeline and streaming
+
+`@phishinqi/chordkit/pipeline` adds `AsyncIterable` interfaces for Node `Readable` and other event sources. `analyzeStableEventStream()` waits for `watermark` or `end` controls and emits only segments ending at or before the confirmed tick. `analyzeEventSnapshots()` emits a complete, revisable timeline after each input and marks the final `end` snapshot with `isFinal: true`.
+
+`decodeMidiStream()` supports arbitrary byte chunk boundaries and buffers complete track payloads rather than the whole file. SMF format 1 track parsing is read-order based; downstream analysis retains stable tick/priority/track/channel/sequence ordering. See [PIPELINE.md](PIPELINE.md) for strategy, cache, and stream examples.

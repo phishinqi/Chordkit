@@ -1,17 +1,24 @@
 import { analyzeChord } from '../engine/analyzeChord';
 import { tickToMilliseconds } from './tempoMap';
-import type { ChordAnalysisResult } from '../types';
+import type { ChordAnalysisOptions, ChordAnalysisResult, RegisteredNoteInput } from '../types';
 import type { ChordTimeline, ChordTimelineDraft, ChordTimelineSegment, NoChordReason, TimelineOptions } from './types';
+
+export type TimelineChordAnalyzer = (input: readonly RegisteredNoteInput[], options?: ChordAnalysisOptions) => ChordAnalysisResult;
 
 function emptyAnalysis(): ChordAnalysisResult {
   return { primary: null, alternatives: [], candidates: [], relations: [], inputMode: 'registered', ambiguity: 'none' };
 }
 
-function analysisFor(window: ChordTimelineDraft['windows'][number], minChordNotes: number, analysisOptions: ChordTimelineDraft['options']['analysisOptions']): { analysis: ChordAnalysisResult; noChordReason?: NoChordReason } {
+function analysisFor(
+  window: ChordTimelineDraft['windows'][number],
+  minChordNotes: number,
+  analysisOptions: ChordTimelineDraft['options']['analysisOptions'],
+  analyzer: TimelineChordAnalyzer,
+): { analysis: ChordAnalysisResult; noChordReason?: NoChordReason } {
   const midi = [...new Set(window.activeNotes.map((note) => note.midi))].sort((a, b) => a - b);
   if (!midi.length) return { analysis: emptyAnalysis(), noChordReason: 'empty-window' };
   if (midi.length < minChordNotes) return { analysis: emptyAnalysis(), noChordReason: midi.length === 1 ? 'single-note' : 'insufficient-notes' };
-  const analysis = analyzeChord(midi, analysisOptions);
+  const analysis = analyzer(midi, analysisOptions);
   return analysis.primary ? { analysis } : { analysis, noChordReason: 'no-template-match' };
 }
 
@@ -19,11 +26,15 @@ function stableKey(segment: ChordTimelineSegment): string {
   return `${segment.analysis.primary?.name ?? 'no-chord'}|${[...new Set(segment.activeNotes.map((note) => note.midi))].sort((a, b) => a - b).join(',')}`;
 }
 
-export function analyzeTimeline(draft: ChordTimelineDraft, overrides: Pick<TimelineOptions, 'analysisOptions' | 'includeNoChord'> = {}): ChordTimeline {
+export function analyzeTimelineWith(
+  draft: ChordTimelineDraft,
+  analyzer: TimelineChordAnalyzer,
+  overrides: Pick<TimelineOptions, 'analysisOptions' | 'includeNoChord'> = {},
+): ChordTimeline {
   const options = { ...draft.options, ...overrides, analysisOptions: overrides.analysisOptions ?? draft.options.analysisOptions };
   const segments: ChordTimelineSegment[] = [];
   for (const window of draft.windows) {
-    const result = analysisFor(window, options.minChordNotes, options.analysisOptions);
+    const result = analysisFor(window, options.minChordNotes, options.analysisOptions, analyzer);
     if (!options.includeNoChord && result.noChordReason) continue;
     const startMs = tickToMilliseconds(window.startTick, draft.timing);
     const endMs = tickToMilliseconds(window.endTick, draft.timing);
@@ -52,4 +63,8 @@ export function analyzeTimeline(draft: ChordTimelineDraft, overrides: Pick<Timel
     } else segments.push(segment);
   }
   return { scope: draft.scope, scopeKey: draft.scopeKey, timing: draft.timing, segments, diagnostics: draft.diagnostics };
+}
+
+export function analyzeTimeline(draft: ChordTimelineDraft, overrides: Pick<TimelineOptions, 'analysisOptions' | 'includeNoChord'> = {}): ChordTimeline {
+  return analyzeTimelineWith(draft, analyzeChord, overrides);
 }

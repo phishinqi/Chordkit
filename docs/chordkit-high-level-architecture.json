@@ -1,0 +1,381 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Chordkit Pipeline 目标架构",
+    "subtitle": "通用 SDK 运行时：IR 驱动分析、策略/缓存与同步/流式双轨接口",
+    "locale": "zh-CN",
+    "output": "docs/chordkit-high-level-architecture.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/phishinqi/Chordkit",
+      "revision": "1c101550952dc4426ceef7e47d3546ff16932c9d"
+    },
+    "viewBox": [
+      930,
+      500
+    ]
+  },
+  "components": [
+    {
+      "id": "host",
+      "type": "external",
+      "label": "SDK 接入方",
+      "sublabel": "Node.js · Readable · Web MIDI",
+      "tag": "宿主运行时",
+      "pos": [
+        40,
+        200
+      ],
+      "size": [
+        130,
+        66
+      ],
+      "sources": [
+        {
+          "path": "README.md",
+          "line": 26,
+          "label": "SDK usage"
+        }
+      ]
+    },
+    {
+      "id": "inputs",
+      "type": "external",
+      "label": "音符 / MIDI 输入",
+      "sublabel": "notes · SMF · AsyncIterable",
+      "tag": "外部数据",
+      "pos": [
+        40,
+        350
+      ],
+      "size": [
+        130,
+        66
+      ]
+    },
+    {
+      "id": "exports",
+      "type": "frontend",
+      "label": "公开导出",
+      "sublabel": "core · /midi · /pipeline",
+      "tag": "稳定入口",
+      "pos": [
+        195,
+        200
+      ],
+      "size": [
+        125,
+        66
+      ],
+      "sources": [
+        {
+          "path": "package.json",
+          "line": 9,
+          "label": "package exports"
+        }
+      ]
+    },
+    {
+      "id": "legacy",
+      "type": "backend",
+      "label": "Legacy 适配层",
+      "sublabel": "@chordkit/legacy → core",
+      "tag": "独立 / Deprecated",
+      "pos": [
+        180,
+        60
+      ],
+      "size": [
+        125,
+        66
+      ],
+      "sources": [
+        {
+          "path": "src/legacy/index.ts",
+          "line": 1,
+          "label": "adapter entry"
+        }
+      ]
+    },
+    {
+      "id": "pipeline",
+      "type": "backend",
+      "label": "Analysis Pipeline",
+      "sublabel": "events → spans → windows",
+      "tag": "IR orchestration",
+      "pos": [
+        345,
+        200
+      ],
+      "size": [
+        155,
+        66
+      ]
+    },
+    {
+      "id": "ir",
+      "type": "backend",
+      "label": "Types / Schema / IR",
+      "sublabel": "MidiEvent · Span · Window",
+      "tag": "强类型契约",
+      "pos": [
+        345,
+        350
+      ],
+      "size": [
+        155,
+        66
+      ]
+    },
+    {
+      "id": "analyzer",
+      "type": "backend",
+      "label": "Analyzer Core",
+      "sublabel": "normalize · intervals · templates",
+      "tag": "不可替换证据",
+      "pos": [
+        525,
+        200
+      ],
+      "size": [
+        160,
+        66
+      ]
+    },
+    {
+      "id": "strategy-cache",
+      "type": "database",
+      "label": "Strategies + LRU",
+      "sublabel": "general · pop · jazz · classical",
+      "tag": "实例级 / 显式缓存",
+      "pos": [
+        525,
+        60
+      ],
+      "size": [
+        160,
+        66
+      ]
+    },
+    {
+      "id": "streams",
+      "type": "messagebus",
+      "label": "流式接口",
+      "sublabel": "stable segments · snapshots",
+      "tag": "AsyncIterable",
+      "pos": [
+        705,
+        350
+      ],
+      "size": [
+        150,
+        66
+      ]
+    },
+    {
+      "id": "results",
+      "type": "external",
+      "label": "分析结果",
+      "sublabel": "ChordResult · Timeline · Segment",
+      "tag": "同步/流式输出",
+      "pos": [
+        715,
+        200
+      ],
+      "size": [
+        160,
+        66
+      ],
+      "sources": [
+        {
+          "path": "src/core/chord/types/chord.ts",
+          "line": 65,
+          "label": "result contract"
+        },
+        {
+          "path": "src/core/chord/segmentation/types.ts",
+          "line": 89,
+          "label": "timeline contract"
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "宿主应用 / 外部数据边界",
+      "wraps": [
+        "host",
+        "inputs"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Chordkit SDK 运行时（发布包）",
+      "wraps": [
+        "exports",
+        "legacy",
+        "pipeline",
+        "ir",
+        "analyzer",
+        "strategy-cache",
+        "streams"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "host-exports",
+      "from": "host",
+      "to": "exports",
+      "label": "import",
+      "variant": "emphasis",
+      "labelAt": [
+        185,
+        285
+      ]
+    },
+    {
+      "id": "host-legacy",
+      "from": "host",
+      "to": "legacy",
+      "label": "legacy import",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "legacy-core",
+      "from": "legacy",
+      "to": "exports",
+      "label": "wrap",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        242,
+        165
+      ]
+    },
+    {
+      "id": "inputs-pipeline",
+      "from": "inputs",
+      "to": "pipeline",
+      "label": "sync / stream",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelAt": [
+        268,
+        320
+      ]
+    },
+    {
+      "id": "exports-pipeline",
+      "from": "exports",
+      "to": "pipeline",
+      "label": "pipeline API",
+      "labelAt": [
+        333,
+        180
+      ]
+    },
+    {
+      "id": "pipeline-ir",
+      "from": "pipeline",
+      "to": "ir",
+      "label": "IR",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        422,
+        330
+      ]
+    },
+    {
+      "id": "pipeline-analyzer",
+      "from": "pipeline",
+      "to": "analyzer",
+      "label": "normalized input",
+      "variant": "emphasis",
+      "labelAt": [
+        513,
+        180
+      ]
+    },
+    {
+      "id": "strategy-analyzer",
+      "from": "strategy-cache",
+      "to": "analyzer",
+      "label": "profile + cache",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        605,
+        165
+      ]
+    },
+    {
+      "id": "ir-streams",
+      "from": "ir",
+      "to": "streams",
+      "label": "events / controls",
+      "variant": "emphasis",
+      "labelAt": [
+        690,
+        330
+      ]
+    },
+    {
+      "id": "analyzer-results",
+      "from": "analyzer",
+      "to": "results",
+      "label": "results",
+      "variant": "emphasis",
+      "labelAt": [
+        700,
+        180
+      ]
+    },
+    {
+      "id": "streams-results",
+      "from": "streams",
+      "to": "results",
+      "label": "segments / snapshots",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelAt": [
+        790,
+        320
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "双轨 API",
+      "items": [
+        "既有同步 core、MIDI 与 ChordTimelineEngine 保持稳定。",
+        "独立 /pipeline 出口承载 Pipeline、Analyzer、LRU 和 AsyncIterable 流式接口。"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "扩展与隔离",
+      "items": [
+        "策略只能组合模板、评分、后处理和 cacheKey；root/interval/voicing 证据核心不允许替换。",
+        "缓存只属于 Analyzer/Pipeline 实例；自定义策略未声明 cacheKey 时跳过分析缓存。"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "流式语义",
+      "items": [
+        "watermark/end 确认后输出稳定段；snapshot 在每个事件或控制输入后递增 revision。",
+        "byte decoder 支持任意 chunk 边界，并以完整 MTrk payload 为流式缓冲单位。"
+      ]
+    }
+  ]
+}
