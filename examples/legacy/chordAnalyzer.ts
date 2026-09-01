@@ -657,12 +657,12 @@ function generateTritoneSubForFinder(notes: NormalizedNote[], extensions: number
     const rootMidi = notes[0].midi;
     const subRootMidi = rootMidi + 6;
 
-    // We need a context-aware name, but here we just need a string. 
-    // Just pick a standard name based on pitch class. 
+    // We need a context-aware name, but here we just need a string.
+    // Just pick a standard name based on pitch class.
     // Tonal.js or just hardcoded array? We have NOTE_NAMES.
     const pc = ((subRootMidi % 12) + 12) % 12;
-    const subRootName = FLAT_NOTE_NAMES[pc]; // Prefer flats for Tritone Subs of Sharps usually? 
-    // e.g. G7 -> Db7. C7 -> Gb7. 
+    const subRootName = FLAT_NOTE_NAMES[pc]; // Prefer flats for Tritone Subs of Sharps usually?
+    // e.g. G7 -> Db7. C7 -> Gb7.
 
     return `${subRootName}7 (SubV)`;
 }
@@ -887,8 +887,8 @@ export function detect(
     for (const note of inputNotes) {
         if (typeof note === 'number') {
             const spellings = getEnharmonicSpellings(note);
-            // normalization_octave handled by default parsing if needed? 
-            // In current logic, MIDI numbers preserve their octave. 
+            // normalization_octave handled by default parsing if needed?
+            // In current logic, MIDI numbers preserve their octave.
             // If we needed pitch-class only input support (without octaves), we'd need a separate parser or default octave injection.
             // Assuming inputNotes are MIDI or strings with octaves for now as per current system support.
             const variants: NormalizedNote[] = spellings.map(spelling => parseNote(spelling + Math.floor(note / 12 - 1)));
@@ -1020,8 +1020,8 @@ export function detect(
                 const rotatingIntervals = rotatingAnalysis.absoluteIntervals;
 
                 // Use existing pattern matching logic or analyzeVoicing?
-                // analyzeVoicing assumes notes[0] is root. 
-                // We need to re-order notes so candidateRoot is first to use analyzeVoicing? 
+                // analyzeVoicing assumes notes[0] is root.
+                // We need to re-order notes so candidateRoot is first to use analyzeVoicing?
                 // Or just use interval matching.
 
                 // Let's use matchPattern manually here to reuse existing logic including omissions

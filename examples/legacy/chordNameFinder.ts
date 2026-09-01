@@ -416,7 +416,7 @@ function generateSymmetricalAlternatives(result: ChordResult, notes: number[], c
 
     // notes are sorted absolute MIDI
     // We want to treat each note as a potential root
-    const originalRootMidi = parseMidi(result.root); // This might be tricky if root name is generic. 
+    const originalRootMidi = parseMidi(result.root); // This might be tricky if root name is generic.
     // Better: Iterate through the input unique notes.
 
     // We need the unique pitch classes in the chord
