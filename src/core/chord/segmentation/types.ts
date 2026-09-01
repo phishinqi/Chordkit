@@ -100,12 +100,15 @@ export interface TimelineOptions {
   velocityThreshold?: number;
   includeNoChord?: boolean;
   analysisOptions?: ChordAnalysisOptions;
+  /** Finalize active notes at this tick when materializing event input. */
+  endTick?: number;
 }
 
-export interface ResolvedTimelineOptions extends Required<Omit<TimelineOptions, 'scopeKey' | 'timing' | 'analysisOptions'>> {
+export interface ResolvedTimelineOptions extends Required<Omit<TimelineOptions, 'scopeKey' | 'timing' | 'analysisOptions' | 'endTick'>> {
   scopeKey?: number;
   timing?: Partial<TimingDefinition>;
   analysisOptions: ChordAnalysisOptions;
+  endTick?: number;
 }
 
 export interface ChordWindow {

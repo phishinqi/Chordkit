@@ -27,6 +27,7 @@ export function resolveTimelineOptions(options: TimelineOptions = {}): ResolvedT
   if (resolved.onsetToleranceBeats < 0 || resolved.mergeWindowBeats < 0 || resolved.gridBeats <= 0 || resolved.holdThresholdBeats < 0) throw new ChordInputError('Timeline beat thresholds must be non-negative and gridBeats must be positive');
   if (!Number.isInteger(resolved.minChordNotes) || resolved.minChordNotes < 1) throw new ChordInputError('minChordNotes must be a positive integer');
   if (!Number.isInteger(resolved.velocityThreshold) || resolved.velocityThreshold < 0 || resolved.velocityThreshold > 127) throw new ChordInputError('velocityThreshold must be an integer between 0 and 127');
+  if (resolved.endTick !== undefined && (!Number.isInteger(resolved.endTick) || resolved.endTick < 0)) throw new ChordInputError('endTick must be a non-negative integer');
   return resolved;
 }
 
@@ -39,7 +40,9 @@ export function buildTimeline(input: readonly MidiEvent[] | readonly NoteSpan[],
   if (isMidiEvent(input)) {
     const tracker = new ActiveNoteTracker({ pairing: resolved.pairing, velocityThreshold: resolved.velocityThreshold }, normalizeTiming(timing ?? resolved.timing, resolved.ppq));
     for (const event of stableSortMidiEvents(input)) tracker.push(event);
-    const endTick = input.reduce((maximum, event) => Math.max(maximum, event.tick), 0);
+    const lastEventTick = input.reduce((maximum, event) => Math.max(maximum, event.tick), 0);
+    const endTick = resolved.endTick ?? lastEventTick;
+    if (endTick < lastEventTick) throw new ChordInputError("endTick must be >= last event tick (${lastEventTick})");
     tracker.flush(endTick);
     const snapshot = tracker.snapshot();
     const windows = buildChordWindows(snapshot.noteSpans, snapshot.timing, resolved, snapshot.diagnostics);
@@ -59,33 +62,35 @@ export function buildTimeline(input: readonly MidiEvent[] | readonly NoteSpan[],
 }
 
 export class ChordTimelineEngine {
-  private readonly tracker: ActiveNoteTracker;
   private readonly options: ResolvedTimelineOptions;
+  private readonly initialTiming: TimingDefinition;
+  private readonly events: MidiEvent[] = [];
 
   constructor(timing?: Partial<TimingDefinition>, options: TimelineOptions = {}) {
     this.options = resolveTimelineOptions(options);
-    this.tracker = new ActiveNoteTracker({ pairing: this.options.pairing, velocityThreshold: this.options.velocityThreshold }, normalizeTiming(timing ?? this.options.timing, this.options.ppq));
+    this.initialTiming = normalizeTiming(timing ?? this.options.timing, this.options.ppq);
   }
 
-  push(event: MidiEvent): void { this.tracker.push(event); }
-
-  snapshot(): TimelineSnapshot { return this.tracker.snapshot(); }
-
-  flush(endTick?: number): ChordTimelineDraft {
-    this.tracker.flush(endTick);
-    const snapshot = this.tracker.snapshot();
-    return {
-      scope: this.options.scope,
-      scopeKey: this.options.scopeKey ?? null,
-      timing: snapshot.timing,
-      noteSpans: snapshot.noteSpans,
-      windows: buildChordWindows(snapshot.noteSpans, snapshot.timing, this.options, snapshot.diagnostics),
-      diagnostics: snapshot.diagnostics,
-      options: this.options,
-    };
+  push(event: MidiEvent): void {
+    if (!Number.isInteger(event.tick) || event.tick < 0) throw new ChordInputError(`Event tick must be a non-negative integer: ${event.tick}`);
+    this.events.push(event);
   }
 
-  analyze(endTick?: number): ChordTimeline { return analyzeTimeline(this.flush(endTick)); }
+  snapshot(): TimelineSnapshot {
+    const draft = this.materialize();
+    return { events: stableSortMidiEvents(this.events), noteSpans: draft.noteSpans, diagnostics: draft.diagnostics, timing: draft.timing };
+  }
 
-  reset(): void { this.tracker.reset(); }
+  flush(endTick?: number): ChordTimelineDraft { return this.materialize(endTick); }
+
+  analyze(endTick?: number): ChordTimeline { return analyzeTimeline(this.materialize(endTick)); }
+
+  reset(): void { this.events.length = 0; }
+
+  private materialize(endTick?: number): ChordTimelineDraft {
+    const lastEventTick = this.events.reduce((maximum, event) => Math.max(maximum, event.tick), 0);
+    const finalizedAt = endTick ?? lastEventTick;
+    if (!Number.isInteger(finalizedAt) || finalizedAt < lastEventTick) throw new ChordInputError(`Flush endTick must be >= last event tick (${lastEventTick})`);
+    return buildTimeline(this.events, this.initialTiming, { ...this.options, endTick: finalizedAt });
+  }
 }
