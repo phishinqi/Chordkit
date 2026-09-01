@@ -25,3 +25,8 @@ npm run playground:preview
 `.github/workflows/pages.yml` 在 `main` 更新 Playground、库源码或构建依赖时自动部署 GitHub Pages；PR 仅构建和测试，不公开部署。
 
 默认地址：`https://phishinqi.github.io/Chordkit/`。
+## System MIDI output
+
+In **Live & Stream Lab**, select **Scan MIDI ports** to request browser MIDI access. When a browser-visible MIDI output appears in the selector, the piano, keyboard shortcuts, and homepage chord preview send standard MIDI Note On/Off messages to the selected output.
+
+The available outputs are supplied by the browser and operating system. If an operating-system synthesizer is exposed as an output, select it; otherwise install or connect a MIDI output device/virtual MIDI port and scan again. Web Audio remains available as the in-browser fallback.
