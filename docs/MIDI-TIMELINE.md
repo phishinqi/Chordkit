@@ -55,17 +55,18 @@ Segments use the half-open interval `[startTick, endTick)`. A NoteSpan is active
 
 Low-evidence windows remain visible as explicit no-chord segments unless `includeNoChord` is false.
 
-## Incremental engine
+## Offline and incremental parity
+
+`buildTimeline()` and `ChordTimelineEngine` both stable-sort events by tick, note-off/control/tempo/note-on priority, track, channel and sequence. They use the same active-note tracker, CC64 handling, scope filters and window construction.
 
 ```ts
 const engine = new ChordTimelineEngine();
 engine.push({ type: 'noteOn', tick: 0, track: 0, channel: 0, midi: 60, velocity: 100, sequence: 0 });
-// push remaining normalized events
+// Push any remaining normalized events, including out-of-order arrival.
 const timeline = engine.analyze(960);
-engine.reset();
 ```
 
-The engine accepts normalized `MidiEvent` values. Binary SMF parsing remains an offline `parseMidi()` responsibility.
+`engine.analyze(endTick)` recalculates the complete pushed event prefix as finalized at `endTick`. It therefore produces the same result as offline analysis of the same event set and final tick; it is a deterministic committed snapshot rather than an irreversible low-latency guess. The optional `TimelineOptions.endTick` provides the same explicit finalization behavior for event-array input.
 
 ## Diagnostics
 

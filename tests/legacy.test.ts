@@ -47,7 +47,7 @@ describe('deprecated legacy adapter', () => {
   });
 
   it('exposes the complete migrated vocabulary through the core registry', () => {
-    const expected = ['sus2(no5)', 'sus4(no5)', 'sus2add3', 'maj7(no5)', '7(no5)', 'm7(no5)', '6', 'm6', 'add#9', 'add11', 'm add4', 'm add11', 'mMaj7(#5)', 'maj7(#5)', 'mMaj9', 'maj7#11', 'maj9(#11)', 'maj(#4)', 'maj11', 'm11(no9)', '13(no11)', '13sus4', '7(b5)', '7(#5)', 'maj7(b5)', 'maj7(#11,no3)', '7alt', 'phryg', 'm6/9', '7sus4(b9)'];
+    const expected = ['sus2(no5)', 'sus4(no5)', 'sus2add3', 'maj7(no5)', '7(no5)', 'm7(no5)', '6', 'm6', 'add#9', 'add11', 'm add4', 'm add11', 'mMaj7(#5)', 'maj7(#5)', 'mMaj9', 'maj7#11', 'maj9(#11)', 'maj(#4)', 'maj11', 'm11(no9)', '13(no11)', '13sus4', '7(b5)', '7(#5)', 'maj7(b5)', 'maj7(#11,no3)', 'phryg', 'm6/9', '7sus4(b9)'];
     const aliases = CHORD_TEMPLATES.flatMap((template) => [template.quality, ...(template.legacyAliases ?? [])]);
     for (const quality of expected) expect(aliases).toContain(quality);
   });

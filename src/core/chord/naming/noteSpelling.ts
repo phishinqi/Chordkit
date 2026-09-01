@@ -27,6 +27,12 @@ function preferFlatName(pitchClass: number): string {
   return canonicalNoteName(pitchClass);
 }
 
+function keyPrefersFlats(key: string | undefined): boolean {
+  if (!key) return false;
+  const tonic = key.trim().match(/^[A-Ga-g][#b]?/)?.[0];
+  return tonic?.includes('b') === true || ['F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Cb'].includes(key.trim());
+}
+
 function defaultSpelling(context: SpellingContext, options: SpellingOptions): string {
   const source = stripOctave(context.source);
   if (options.preserveSource && source) {
@@ -34,7 +40,7 @@ function defaultSpelling(context: SpellingContext, options: SpellingOptions): st
       if (pitchClassFromName(source) === normalizePitchClass(context.pitchClass)) return source;
     } catch { /* fall through to degree spelling */ }
   }
-  if (options.preferFlats) return preferFlatName(context.pitchClass);
+  if (options.preferFlats ?? keyPrefersFlats(options.key)) return preferFlatName(context.pitchClass);
   const letter = rootLetter(context.rootPitchClass, context.root);
   const step = DEGREE_STEPS[context.degree];
   if (!letter || step === undefined) return canonicalNoteName(context.pitchClass);
