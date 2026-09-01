@@ -10,6 +10,8 @@ describe('Piano geometry', () => {
     expect(container.querySelectorAll('.piano .black')).toHaveLength(10);
     expect(container.querySelector('.white.selected')).toBeTruthy();
     expect(container.querySelector('.black.selected')).toBeTruthy();
+    expect(Number.parseFloat((screen.getByTitle('C#3') as HTMLElement).style.left)).toBeCloseTo(100 / 14, 10);
+    expect(Number.parseFloat((screen.getByTitle('D#3') as HTMLElement).style.left)).toBeCloseTo(200 / 14, 10);
     fireEvent.click(screen.getByTitle('C#3'));
     expect(onToggle).toHaveBeenCalledWith('C#3', 49);
   });
