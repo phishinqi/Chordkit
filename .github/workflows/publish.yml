@@ -77,5 +77,8 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Upgrade npm for trusted publishing
+        run: npm install --global npm@latest
+
       - name: Publish
         run: npm publish --access public
