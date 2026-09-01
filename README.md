@@ -5,7 +5,7 @@
 [![Node.js >= 22](https://img.shields.io/badge/node-%3E%3D22-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-blue.svg)](LICENSE)
 
-[English](#english) · [中文](#中文)
+[English](README.md) · [中文](README_CN.md)
 
 ---
 
