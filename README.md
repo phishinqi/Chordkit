@@ -38,6 +38,24 @@ Chordkit is a register-aware TypeScript chord-analysis library. It keeps pitch-c
 
 `analyzeChord` accepts MIDI `0..127` values or octave-qualified note names. Use `analyzePitchClasses` for registerless sets; its results are explicitly register-ambiguous.
 
+## MIDI timeline / MIDI 时间线
+
+Chordkit also analyzes time-ordered MIDI, including SMF format 0/1 parsing, tempo maps, CC64 sustain, onset clustering and chord segments.
+
+```ts
+import { analyzeMidi, buildTimeline, analyzeTimeline, parseMidi } from '@phishinqi/chordkit';
+
+const parsed = parseMidi(midiBytes);
+const timeline = analyzeTimeline(buildTimeline(parsed.noteSpans, parsed.timing));
+const direct = analyzeMidi(midiBytes);
+
+for (const segment of direct.segments) {
+  console.log(segment.startTick, segment.endTick, segment.analysis.primary?.name);
+}
+```
+
+Use `@phishinqi/chordkit/midi` for `MidiEvent`, `NoteSpan`, timing helpers, `ActiveNoteTracker`, and `ChordTimelineEngine`. Default segmentation uses a conservative onset/beat policy; low-velocity noise (`<= 5`) is filtered while valid notes remain dynamically unweighted. See `docs/MIDI-TIMELINE.md`.
+
 ## Legacy compatibility / Legacy 兼容
 
 During v0.x, the old-shaped API is available from the deprecated subpath:

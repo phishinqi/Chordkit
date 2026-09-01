@@ -30,3 +30,6 @@
 ## 中文说明
 
 核心约束是：Pitch Class 只描述音高类；absolute/compound interval 才描述 2 与 9、4 与 11、6 与 13 的实际音程语义。无八度输入不会被伪装成带 register 的扩展和弦分析。
+## MIDI timeline
+
+The segmentation layer converts SMF or normalized MIDI events into NoteSpan lifecycles, then builds onset/grid-aware chord windows before delegating each active pitch set to `analyzeChord`. The static chord engine remains unchanged; timeline analysis is a separate orchestration layer.

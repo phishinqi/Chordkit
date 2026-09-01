@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: { index: 'src/index.ts', legacy: 'src/legacy/index.ts' },
+  entry: { index: 'src/index.ts', legacy: 'src/legacy/index.ts', midi: 'src/midi/index.ts' },
   format: ['esm', 'cjs'],
   dts: true,
   sourcemap: true,

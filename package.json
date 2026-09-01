@@ -18,6 +18,11 @@
       "types": "./dist/legacy.d.ts",
       "import": "./dist/legacy.js",
       "require": "./dist/legacy.cjs"
+    },
+    "./midi": {
+      "types": "./dist/midi.d.ts",
+      "import": "./dist/midi.js",
+      "require": "./dist/midi.cjs"
     }
   },
   "files": [
