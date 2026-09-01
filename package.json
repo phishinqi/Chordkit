@@ -28,6 +28,11 @@
       "types": "./dist/pipeline.d.ts",
       "import": "./dist/pipeline.js",
       "require": "./dist/pipeline.cjs"
+    },
+    "./harmony": {
+      "types": "./dist/harmony.d.ts",
+      "import": "./dist/harmony.js",
+      "require": "./dist/harmony.cjs"
     }
   },
   "files": [

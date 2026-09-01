@@ -30,3 +30,7 @@ npm run playground:preview
 In **Live & Stream Lab**, select **Scan MIDI ports** to request browser MIDI access. When a browser-visible MIDI output appears in the selector, the piano, keyboard shortcuts, and homepage chord preview send standard MIDI Note On/Off messages to the selected output.
 
 The available outputs are supplied by the browser and operating system. If an operating-system synthesizer is exposed as an output, select it; otherwise install or connect a MIDI output device/virtual MIDI port and scan again. Web Audio remains available as the in-browser fallback.
+
+## Harmony Lab
+
+The Playground includes **Harmony Lab**: enter chord symbols or upload MIDI, choose a manual key or deterministic inference, switch analysis/pop/classical Roman renderers, inspect global and local tonal contexts, and edit JSON overrides for key ranges, voices, and NCT labels. Voice-leading and NCT inspector data appears when a MIDI timeline is available.

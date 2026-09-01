@@ -7,6 +7,7 @@ const typeCatalog = [
   'ChordAnalysisOptions', 'ChordAnalysisResult', 'ChordCandidate', 'ChordRelation', 'ChordTemplate', 'IntervalAnalysis',
   'MidiEvent', 'MidiParseResult', 'NoteSpan', 'ChordWindow', 'ChordTimelineDraft', 'ChordTimelineSegment', 'ChordTimeline', 'TimelineOptions',
   'AnalyzerStrategy', 'AnalyzerConfig', 'AnalysisPipelineConfig', 'TimelineAnalysisSnapshot', 'TimelineStreamControl', 'LegacyOptions',
+  'TonalContext', 'TonalMode', 'KeyCandidate', 'RomanNumeralAst', 'HarmonyCandidate', 'HarmonyAnalysis', 'TonalSegment', 'VoiceAssignment', 'VoiceLeadingEvent', 'NonChordToneAnalysis', 'HarmonyOptions', 'HarmonicTimeline',
 ];
 
 const args: Record<string, unknown[]> = {
@@ -26,6 +27,15 @@ const args: Record<string, unknown[]> = {
   'midi.tickToMilliseconds': [480, { ppq: 480, tempos: [{ tick: 0, bpm: 120 }], timeSignatures: [{ tick: 0, numerator: 4, denominator: 4 }] }],
   'midi.timingChangeTicks': [{ ppq: 480, tempos: [{ tick: 0, bpm: 120 }], timeSignatures: [{ tick: 0, numerator: 4, denominator: 4 }] }],
   'pipeline.createAnalyzer': [{ strategy: 'jazz', analysisCapacity: 8 }], 'pipeline.createAnalysisPipeline': [{ strategy: 'pop' }], 'pipeline.resolveStrategy': ['jazz'],
+  'harmony.analyzeHarmony': ['Cmaj7', { key: { tonic: 'C', mode: 'major' } }],
+  'harmony.inferKeys': [['Dm7', 'G7', 'Cmaj7']],
+  'harmony.analyzeProgression': [['Dm7', 'G7', 'Cmaj7']],
+  'harmony.parseChordSymbol': ['Cmaj7'],
+  'harmony.createTonalContext': [{ tonic: 'C', mode: 'major' }],
+  'harmony.scalePitchClasses': [{ tonic: 'C', tonicPitchClass: 0, mode: 'major', source: 'manual', label: 'C major' }],
+  'harmony.contextForPitchClass': [0, 'major'],
+  'harmony.renderDegree': [5, '', 'upper'],
+  'harmony.renderRoman': [{ degree: 5, accidental: '', case: 'upper', quality: '7', extensions: [], alterations: [], omissions: [], inversion: 0, function: 'diatonic' }],
   'legacy.detect': [['C', 'E', 'G']], 'legacy.detectChord': [['C', 'E', 'G']], 'legacy.getIntervals': [60, [60, 64, 67]], 'legacy.getPitchClasses': [['C', 'E', 'G']], 'legacy.parseNote': ['C4'],
 };
 

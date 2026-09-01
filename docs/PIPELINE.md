@@ -113,3 +113,6 @@ for await (const snapshot of analyzeEventSnapshots(liveEvents())) {
 `decodeMidiStream()` accepts arbitrary byte chunks and buffers one complete `MTrk` payload at a time, not the entire SMF. `analyzeStableMidiStream()` and `analyzeMidiSnapshots()` compose that decoder with the event-stream APIs.
 
 For SMF format 1, track chunks are decoded in track-read order; downstream timeline analysis still applies the documented deterministic event ordering. Memory usage is bounded by the largest pending track payload plus downstream event/timeline state, not a fixed O(1) guarantee.
+## Harmony adapters
+
+The optional `@phishinqi/chordkit/harmony` entry consumes core results, progressions, and timeline outputs without mutating the core pipeline. `analyzeHarmonicEventSnapshots()` adapts the existing event snapshot stream; `analyzeStableHarmonicEventStream()` waits for a following stable harmonic window before finalizing voice-leading/NCT labels.

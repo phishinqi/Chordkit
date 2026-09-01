@@ -277,6 +277,19 @@ pipeline.analyzeMidi(midiBytes);
 
 Built-in profiles are `general`, `pop`, `jazz`, and `classical`. Custom strategies can compose templates, scoring, and post-processing without replacing interval/root evidence; custom analysis caching requires an explicit stable `cacheKey`. Streaming APIs accept `AsyncIterable` MIDI events or bytes and provide both watermark-finalized segments and revisable snapshots. See [Pipeline API](docs/PIPELINE.md).
 
+### Harmony analysis
+
+`@phishinqi/chordkit/harmony` provides deterministic manual/automatic key contexts, Roman-numeral AST/renderers, chord-symbol progression parsing, local modulation segments, voice-leading, NCT analysis, and harmonic streams without changing the default core API output.
+
+```ts
+import { analyzeProgression } from '@phishinqi/chordkit/harmony';
+
+const result = analyzeProgression(['Dm7', 'G7', 'Cmaj7'], { auto: true, profile: 'jazz' });
+console.log(result.globalContext.label);
+```
+
+See [Harmony analysis](docs/HARMONY.md).
+
 ### Interactive Playground
 
 Try the public Beta at **https://phishinqi.github.io/Chordkit/**. The static Playground runs Chordkit entirely in the browser and includes Core, MIDI, Pipeline, Legacy, stream, raw JSON, and API Explorer workbenches. See [Playground documentation](docs/PLAYGROUND.md).
@@ -304,6 +317,7 @@ npm run ci
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [MIDI timeline](docs/MIDI-TIMELINE.md)
+- [Harmony analysis](docs/HARMONY.md)
 - [Legacy migration](docs/LEGACY-MIGRATION.md)
 - [Testing](docs/TESTING.md)
 - [Contributing](CONTRIBUTING.md)

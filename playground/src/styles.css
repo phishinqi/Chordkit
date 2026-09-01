@@ -66,3 +66,18 @@ footer { display:flex; justify-content:space-between; gap:16px; padding:18px 28p
 
 .midi-output { display: grid; gap: 6px; margin: 14px 0 9px; color: #605c54; font: 10px 'DM Mono', monospace; }
 .midi-output select { width: 100%; padding: 8px; border: 1px solid #151411; color: #151411; background: #f4efe3; }
+.harmony-lab { display: grid; gap: 18px; }
+.harmony-controls { display: grid; gap: 14px; }
+.harmony-controls label { display: grid; gap: 6px; color: #605c54; font: 10px 'DM Mono', monospace; }
+.harmony-controls textarea { min-height: 112px; padding: 10px; border: 1px solid #151411; color: #151411; background: #f4efe3; font: 12px/1.5 'DM Mono', monospace; resize: vertical; }
+.harmony-controls .override-editor { min-height: 96px; color: #f4efe3; background: #151411; }
+.harmony-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.key-label { display: block; margin: 8px 0 18px; font: 800 2.4rem/.9 'Noto Serif SC', serif; }
+.key-candidates { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.key-candidates li { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 8px 0; border-top: 1px solid #15141122; font: 12px 'DM Mono', monospace; }
+.key-candidates small { grid-column: 1 / -1; color: #605c54; font-size: 9px; }
+.roman-events { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
+.roman-events article { display: grid; gap: 5px; min-height: 94px; padding: 10px; border: 1px solid #151411; background: #f4efe3; }
+.roman-events strong { font: 800 1.8rem/.9 'Noto Serif SC', serif; }
+.roman-events small, .roman-events span { font: 9px 'DM Mono', monospace; color: #605c54; }
+@media (max-width: 850px) { .harmony-grid { grid-template-columns: 1fr; } }

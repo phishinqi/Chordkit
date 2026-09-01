@@ -20,6 +20,9 @@
       ],
       "@chordkit/legacy": [
         "src/legacy/index.ts"
+      ],
+      "@chordkit/harmony": [
+        "src/harmony/index.ts"
       ]
     }
   },
