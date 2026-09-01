@@ -74,12 +74,48 @@ function progressionAnalyses(input: ProgressionInput, options: HarmonyOptions): 
 
 function cadenceBonus(analyses: readonly ChordAnalysisResult[], context: TonalContext, weights: ReturnType<typeof resolvedWeights>): number {
   let bonus = 0;
-  const roots = analyses.map((analysis) => analysis.primary?.rootPitchClass).filter((value): value is number => value !== undefined);
+  // Keep event positions intact; filtering unknown roots would create false adjacency.
+  const roots = analyses.map((analysis) => analysis.primary?.rootPitchClass ?? null);
   for (let index = 0; index < roots.length - 1; index += 1) {
     if (roots[index] === normalizePitchClass(context.tonicPitchClass + 7) && roots[index + 1] === context.tonicPitchClass) bonus += weights.cadence;
     if (roots[index] === normalizePitchClass(context.tonicPitchClass + 2) && roots[index + 1] === normalizePitchClass(context.tonicPitchClass + 7)) bonus += weights.cadence * 0.4;
   }
   return bonus;
+}
+
+function chordFit(analysis: ChordAnalysisResult, context: TonalContext, weights: ReturnType<typeof resolvedWeights>): number {
+  const perChord = analysis.candidates.map((chord) => {
+    const roman = romanForCandidate(chord, context);
+    return chord.score * tonalFit({ chord, roman, renderings: renderRoman(roman), tonalScore: 0, combinedScore: 0, function: roman.function, evidence: [] }, weights);
+  });
+  const root = analysis.primary?.rootPitchClass;
+  const scale = scalePitchClasses(context);
+  return (Math.max(0, ...perChord) || 0) + (root === undefined ? 0 : scale.includes(root) ? 0.22 : -0.12);
+}
+
+function contextAnchor(analyses: readonly ChordAnalysisResult[], context: TonalContext): number {
+  if (!analyses.length) return 0;
+  const first = analyses[0]?.primary?.rootPitchClass;
+  const last = analyses.at(-1)?.primary?.rootPitchClass;
+  let score = 0;
+  if (first === context.tonicPitchClass) score += 0.52;
+  if (last === context.tonicPitchClass) score += 0.36;
+  // Natural minor is the least assumptive minor reading for a tonic-anchored phrase.
+  if (context.mode === 'naturalMinor' && (first === context.tonicPitchClass || last === context.tonicPitchClass)) score += 0.08;
+  const tonicEvents = analyses.filter((analysis) => analysis.primary?.rootPitchClass === context.tonicPitchClass);
+  if (tonicEvents.length) {
+    const hasMinorTonic = tonicEvents.some((analysis) => {
+      const quality = analysis.primary?.quality ?? '';
+      return quality.startsWith('m') && !quality.startsWith('maj');
+    });
+    const hasMajorTonic = tonicEvents.some((analysis) => {
+      const quality = analysis.primary?.quality ?? '';
+      return Boolean(analysis.primary) && (!quality.startsWith('m') || quality.startsWith('maj')) && !quality.startsWith('dim');
+    });
+    if (context.mode === 'major' && hasMinorTonic && !hasMajorTonic) score -= 0.24;
+    if (context.mode !== 'major' && hasMajorTonic && !hasMinorTonic) score -= 0.24;
+  }
+  return score;
 }
 
 export function inferKeys(input: readonly (HarmonyInput | ProgressionEvent)[], options: HarmonyOptions = {}): KeyCandidate[] {
@@ -89,18 +125,11 @@ export function inferKeys(input: readonly (HarmonyInput | ProgressionEvent)[], o
   const candidates: KeyCandidate[] = [];
   for (let tonic = 0; tonic < 12; tonic += 1) for (const mode of modes) {
     const context = contextForPitchClass(tonic, mode, 'automatic');
-    const contextScale = new Set(scalePitchClasses(context));
-    const fit = analyses.reduce((total, analysis) => {
-      const perChord = analysis.candidates.map((chord) => {
-        const roman = romanForCandidate(chord, context);
-        return chord.score * tonalFit({ chord, roman, renderings: renderRoman(roman), tonalScore: 0, combinedScore: 0, function: roman.function, evidence: [] }, weights);
-      });
-      const primaryRootFit = analysis.primary ? (contextScale.has(analysis.primary.rootPitchClass) ? 0.22 : -0.12) : 0;
-      return total + (Math.max(0, ...perChord) || 0) + primaryRootFit;
-    }, 0);
+    const fit = analyses.reduce((total, analysis) => total + chordFit(analysis, context, weights), 0);
     const cadence = cadenceBonus(analyses, context, weights);
-    const score = Number((fit / Math.max(1, analyses.length) + cadence + MODE_PRIOR[mode]).toFixed(4));
-    const evidence = [`${analyses.length} analyzed harmony event(s)`, `diatonic/applied/borrowed deterministic profile: ${options.profile ?? 'general'}`, cadence ? `cadence bonus ${cadence.toFixed(3)}` : 'no cadence bonus'];
+    const anchor = contextAnchor(analyses, context);
+    const score = Number((fit / Math.max(1, analyses.length) + cadence + anchor + MODE_PRIOR[mode]).toFixed(4));
+    const evidence = [`${analyses.length} analyzed harmony event(s)`, `diatonic/applied/borrowed deterministic profile: ${options.profile ?? 'general'}`, cadence ? `cadence bonus ${cadence.toFixed(3)}` : 'no cadence bonus', anchor ? `tonic anchor bonus ${anchor.toFixed(3)}` : 'no tonic anchor'];
     candidates.push({ context, score, confidence: 0, evidence });
   }
   candidates.sort((left, right) => right.score - left.score || left.context.label.localeCompare(right.context.label));
@@ -108,39 +137,78 @@ export function inferKeys(input: readonly (HarmonyInput | ProgressionEvent)[], o
   return candidates.slice(0, options.maxKeyCandidates ?? 8).map((candidate) => ({ ...candidate, confidence: Number(Math.max(0, Math.min(1, candidate.score / Math.max(best, 0.0001))).toFixed(3)) }));
 }
 
-function hasCadenceNear(analyses: readonly ChordAnalysisResult[], index: number, context: TonalContext): boolean {
-  const roots = analyses.map((analysis) => analysis.primary?.rootPitchClass ?? null);
-  for (const [left, right] of [[index - 1, index], [index, index + 1]] as const) {
-    if (left < 0 || right >= roots.length) continue;
-    if (roots[left] === normalizePitchClass(context.tonicPitchClass + 7) && roots[right] === context.tonicPitchClass) return true;
-  }
-  return false;
-}
+function contextKey(context: TonalContext): string { return `${context.tonicPitchClass}:${context.mode}`; }
 
-function localContexts(analyses: readonly ChordAnalysisResult[], global: TonalContext, options: HarmonyOptions): TonalContext[] {
+function segmentedContexts(analyses: readonly ChordAnalysisResult[], global: TonalContext, options: HarmonyOptions, globalKeys: readonly KeyCandidate[]): TonalContext[] {
   if (analyses.length < 4) return analyses.map(() => global);
-  const local = analyses.map((_, index) => inferKeys(analyses.slice(Math.max(0, index - 1), Math.min(analyses.length, index + 2)), options)[0]?.context ?? global);
-  return local.map((context, index) => {
-    if (context.tonicPitchClass === global.tonicPitchClass && context.mode === global.mode) return global;
-    const current = analyses[index]!;
-    const harmony = analyzeHarmony(current, { ...options, key: { tonic: global.tonic, tonicPitchClass: global.tonicPitchClass, mode: global.mode } });
-    if (harmony.primary?.function === 'appliedDominant' || harmony.primary?.function === 'appliedLeadingTone' || harmony.primary?.function === 'tritoneSubstitution') return global;
-    const adjacentSupport = local[index - 1]?.tonicPitchClass === context.tonicPitchClass || local[index + 1]?.tonicPitchClass === context.tonicPitchClass;
-    return adjacentSupport && hasCadenceNear(analyses, index, context) ? context : global;
+  const weights = resolvedWeights(options);
+  const modes = options.modes?.length ? options.modes : TONAL_MODES;
+  const all = modes.flatMap((mode) => Array.from({ length: 12 }, (_, tonic) => contextForPitchClass(tonic, mode, 'automatic')));
+  const pool = new Map<string, TonalContext>();
+  [global, ...globalKeys.map((entry) => entry.context)].forEach((context) => pool.set(contextKey(context), context));
+  analyses.forEach((analysis) => all
+    .map((context) => ({ context, score: chordFit(analysis, context, weights) }))
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 4)
+    .forEach((entry) => pool.set(contextKey(entry.context), entry.context)));
+  const contexts = [...pool.values()];
+  const fit = contexts.map((context) => analyses.map((analysis) => chordFit(analysis, context, weights)));
+  const prefix = fit.map((values) => {
+    const sums = [0];
+    values.forEach((value, index) => { sums[index + 1] = sums[index]! + value; });
+    return sums;
   });
+  const minLength = 2;
+  const dp: Array<{ score: number; contextIndex: number; start: number; previous: number }> = [];
+  for (let end = 0; end < analyses.length; end += 1) {
+    let best = { score: -Infinity, contextIndex: 0, start: 0, previous: -1 };
+    for (let contextIndex = 0; contextIndex < contexts.length; contextIndex += 1) {
+      for (let start = 0; start <= end; start += 1) {
+        const length = end - start + 1;
+        // A leading segment may still be growing; every later segment must have
+        // at least two events so a single applied chord cannot become a key.
+        if (start > 0 && length < minLength) continue;
+        const segmentScore = prefix[contextIndex]![end + 1]! - prefix[contextIndex]![start]! + (start === 0 ? contextAnchor(analyses, contexts[contextIndex]!) * 0.35 : 0) + (end === analyses.length - 1 && analyses[end]?.primary?.rootPitchClass === contexts[contextIndex]!.tonicPitchClass ? 0.36 : 0);
+        if (start === 0) {
+          if (segmentScore > best.score) best = { score: segmentScore, contextIndex, start, previous: -1 };
+          continue;
+        }
+        const previousEnd = start - 1;
+        const previous = dp[previousEnd];
+        if (!previous || previous.contextIndex === contextIndex) continue;
+        const score = previous.score + segmentScore - weights.modulationPenalty;
+        if (score > best.score) best = { score, contextIndex, start, previous: previousEnd };
+      }
+    }
+    dp[end] = best;
+  }
+  const segments: Array<{ start: number; end: number; contextIndex: number }> = [];
+  let end = analyses.length - 1;
+  while (end >= 0) {
+    const state = dp[end]!;
+    segments.unshift({ start: state.start, end, contextIndex: state.contextIndex });
+    end = state.previous;
+  }
+  const result = analyses.map(() => global);
+  segments.forEach((segment) => { for (let index = segment.start; index <= segment.end; index += 1) result[index] = contexts[segment.contextIndex]!; });
+  return result;
 }
 
 export function analyzeProgression(input: ProgressionInput, options: HarmonyOptions = {}) {
   const entries = progressionAnalyses(input, options);
   const analyses = entries.map((entry) => entry.analysis);
   const keys = options.key ? [{ context: normalizedContext(options.key, 'manual'), score: 1, confidence: 1, evidence: ['Manual tonal context'] }] : inferKeys(analyses, options);
-  const globalContext = keys[0]?.context ?? contextForPitchClass(0, 'major');
-  const contexts = localContexts(analyses, globalContext, options);
+  const initialContext = keys[0]?.context ?? contextForPitchClass(0, 'major');
+  const contexts = options.key ? analyses.map(() => initialContext) : segmentedContexts(analyses, initialContext, options, keys);
+  const globalContext = contexts[0] ?? initialContext;
   const events = entries.map(({ event, analysis }, index) => {
     const override = options.overrides?.keyRanges?.find((range) => index >= range.startIndex && index <= range.endIndex);
     const localContext = override ? normalizedContext(override.context, 'override') : contexts[index]!;
     const harmony = analyzeHarmony(analysis, { ...options, key: { tonic: localContext.tonic, tonicPitchClass: localContext.tonicPitchClass, mode: localContext.mode } });
-    return { index, id: event.id!, start: event.start ?? null, end: event.end ?? null, analysis: harmony, localContext, modulation: index > 0 && (localContext.tonicPitchClass !== contexts[index - 1]!.tonicPitchClass || localContext.mode !== contexts[index - 1]!.mode) };
+    return { index, id: event.id!, start: event.start ?? null, end: event.end ?? null, analysis: harmony, localContext, modulation: false };
+  });
+  events.forEach((event, index) => {
+    event.modulation = index > 0 && (event.localContext.tonicPitchClass !== events[index - 1]!.localContext.tonicPitchClass || event.localContext.mode !== events[index - 1]!.localContext.mode);
   });
   const tonalSegments = events.reduce<import('./types').TonalSegment[]>((segments, event) => {
     const previous = segments.at(-1);

@@ -35,6 +35,27 @@ describe('Harmony analysis', () => {
     expect(augmented.primary?.roman.special).toBe('It+6');
   });
 
+  it('keeps a tonic-anchored A-minor cycle in one natural-minor context', () => {
+    const progression = analyzeProgression(['Am', 'Dm', 'G', 'C', 'F', 'Bdim', 'E7', 'Am']);
+    expect(progression.globalContext.label).toBe('A naturalMinor');
+    expect(progression.events.every((event) => !event.modulation)).toBe(true);
+    // Dm is iv in A natural minor; Bdim is the diatonic ii degree.
+    expect(progression.events.map((event) => event.analysis.primary?.renderings.analysis)).toEqual(['i', 'iv', 'VII', 'III', 'VI', 'ii°', 'V7', 'i']);
+    expect(progression.events[5]?.analysis.primary?.function).toBe('diatonic');
+  });
+
+  it('detects a C-to-Db modulation as two supported tonal segments', () => {
+    const progression = analyzeProgression(['C', 'F', 'G7', 'Ab7', 'Db', 'Gbm', 'Db']);
+    expect(progression.globalContext.label).toBe('C major');
+    expect(progression.tonalSegments.map((segment) => [segment.startIndex, segment.endIndex, segment.context.label])).toEqual([
+      [0, 2, 'C major'],
+      [3, 6, 'Db major'],
+    ]);
+    expect(progression.events.map((event) => event.analysis.primary?.renderings.analysis)).toEqual(['I', 'IV', 'V7', 'V7', 'I', 'iv', 'I']);
+    expect(progression.events.map((event) => event.localContext.label)).not.toContain('Gb major');
+    expect(progression.events.map((event) => event.localContext.label)).not.toContain('F lydian');
+  });
+
   it('assigns deterministic voices and reports unknown NCT evidence rather than inventing a label', () => {
     const spans: NoteSpan[] = [
       { track: 0, channel: 0, midi: 60, startTick: 0, endTick: 480, velocity: 100, sustained: false },

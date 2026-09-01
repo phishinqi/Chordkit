@@ -28,6 +28,12 @@ const progression = analyzeProgression(['Dm7', 'G7', 'Cmaj7'], {
 });
 ```
 
+For automatic progressions, `globalContext` is the opening/home-key anchor. When
+the sequence contains a supported modulation, `tonalSegments` carries the
+piecewise contexts and each event's `localContext` comes from its segment. A
+short applied dominant or leading-tone chord is not promoted to a standalone
+key segment; it remains functional in the surrounding context.
+
 ## Inputs
 
 `analyzeHarmony()` accepts registered notes, an existing `ChordAnalysisResult`, or a chord symbol. `analyzeProgression()` accepts any mix of those forms plus structured `ProgressionEvent` entries.
@@ -45,6 +51,11 @@ Every `HarmonyCandidate` contains a structured `RomanNumeralAst` plus three rend
 - `classical`: figured-bass oriented view.
 
 The analyzer distinguishes diatonic, borrowed, applied dominant/leading tone, tritone substitution, Neapolitan, augmented-sixth, chromatic mediant, common-tone diminished, chromatic, and unknown functions. Uncertain interpretation remains a candidate or `unknown`; it is not forced into a false single conclusion.
+
+Natural-minor degree mapping preserves the ordinary scale-degree reading (for
+example `A minor: i - iv - VII - III - VI - ii° - V`). A diminished triad is
+kept as its diatonic degree; applied leading-tone notation is reserved for
+fully diminished-seventh or half-diminished-seventh structures.
 
 ## Timeline, voice leading, and NCT
 

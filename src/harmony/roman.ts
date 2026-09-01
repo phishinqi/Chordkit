@@ -1,4 +1,4 @@
-import { canonicalNoteName, normalizePitchClass, templateById, type ChordCandidate } from '../core/chord';
+import { canonicalNoteName, normalizePitchClass, type ChordCandidate } from '../core/chord';
 import type { FunctionalKind, RomanNumeralAst, RomanRenderings, TonalContext, TonalMode } from './types';
 import { scalePitchClasses, signedDistance } from './scale';
 
@@ -13,6 +13,8 @@ function accidentalFor(distance: number): RomanNumeralAst['accidental'] {
 }
 
 function degreeFor(context: TonalContext, pitchClass: number): { degree: number; accidental: RomanNumeralAst['accidental'] } {
+  // The tonic is an exact structural anchor. Never spell it as an altered degree.
+  if (normalizePitchClass(pitchClass) === normalizePitchClass(context.tonicPitchClass)) return { degree: 1, accidental: '' };
   const intervals = scalePitchClasses(context).map((value) => normalizePitchClass(value - context.tonicPitchClass));
   const target = normalizePitchClass(pitchClass - context.tonicPitchClass);
   let best = { degree: 1, distance: 99 };
@@ -35,7 +37,7 @@ function specialFunction(candidate: ChordCandidate, context: TonalContext): { sp
   const has = (...values: number[]) => values.every((value) => pcs.has(normalizePitchClass(value)));
   if (context.mode !== 'major' && candidate.rootPitchClass === normalizePitchClass(context.tonicPitchClass + 1) && !candidate.quality.startsWith('m') && !candidate.quality.startsWith('dim') && !candidate.quality.startsWith('aug') && !candidate.quality.startsWith('sus')) return { special: 'N', function: 'neapolitan' };
   if (has(8, 0, 6)) return { special: pcs.has(2) ? (pcs.has(3) ? 'Ger+6' : 'Fr+6') : 'It+6', function: 'augmentedSixth' };
-  if (candidate.quality.startsWith('dim') && pcs.has(0)) return { special: 'CT°7', function: 'commonToneDiminished' };
+  if (candidate.quality.startsWith('dim7') && pcs.has(0)) return { special: 'CT°7', function: 'commonToneDiminished' };
   return {};
 }
 
@@ -46,7 +48,8 @@ function borrowedMode(candidate: ChordCandidate, context: TonalContext): TonalMo
 
 function applied(candidate: ChordCandidate, context: TonalContext): { target?: string; function?: FunctionalKind } {
   const dominant = /^(?:7|9|11|13)/.test(candidate.quality) && !candidate.quality.startsWith('maj') && !candidate.quality.startsWith('m') && !candidate.quality.startsWith('dim');
-  const diminished = candidate.quality.startsWith('dim') || candidate.quality.includes('m7b5');
+  // A triadic diminished chord is a scale-degree chord, not an applied leading tone.
+  const diminished = candidate.quality.startsWith('dim7') || candidate.quality.includes('m7b5');
   if (!dominant && !diminished) return {};
   const scale = scalePitchClasses(context);
   // A dominant built on the context's own fifth is the ordinary V, not SubV/IV.
