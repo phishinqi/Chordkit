@@ -4,3 +4,5 @@ coverage/
 .tmp-ts/
 *.tsbuildinfo
 .env
+
+playground-dist/

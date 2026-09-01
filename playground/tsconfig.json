@@ -1,0 +1,31 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": [
+      "vite/client",
+      "vitest/globals"
+    ],
+    "noEmit": true,
+    "baseUrl": "..",
+    "paths": {
+      "@chordkit/core": [
+        "src/index.ts"
+      ],
+      "@chordkit/midi": [
+        "src/midi/index.ts"
+      ],
+      "@chordkit/pipeline": [
+        "src/pipeline/index.ts"
+      ],
+      "@chordkit/legacy": [
+        "src/legacy/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "vite.config.ts"
+  ]
+}

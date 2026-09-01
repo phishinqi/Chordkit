@@ -276,6 +276,10 @@ pipeline.analyzeMidi(midiBytes);
 ```
 
 Built-in profiles are `general`, `pop`, `jazz`, and `classical`. Custom strategies can compose templates, scoring, and post-processing without replacing interval/root evidence; custom analysis caching requires an explicit stable `cacheKey`. Streaming APIs accept `AsyncIterable` MIDI events or bytes and provide both watermark-finalized segments and revisable snapshots. See [Pipeline API](docs/PIPELINE.md).
+
+### Interactive Playground
+
+Try the public Beta at **https://phishinqi.github.io/Chordkit/**. The static Playground runs Chordkit entirely in the browser and includes Core, MIDI, Pipeline, Legacy, stream, raw JSON, and API Explorer workbenches. See [Playground documentation](docs/PLAYGROUND.md).
 ### Development
 
 ```bash
