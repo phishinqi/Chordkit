@@ -23,13 +23,26 @@ function resolvedTemplates(options: ChordAnalysisOptions): ChordTemplate[] {
   return custom.length ? [...custom, ...CHORD_TEMPLATES] : [...CHORD_TEMPLATES];
 }
 
-function addLegacyAliases(rootPitchClass: number, bassPitchClass: number | null, template: ChordTemplate): string[] {
-  return (template.legacyAliases ?? []).map((quality) => formatChord(rootPitchClass, quality, bassPitchClass));
+function addLegacyAliases(rootPitchClass: number, bassPitchClass: number | null, template: ChordTemplate, options: ChordAnalysisOptions, rootSource?: string | number, bassSource?: string | number): string[] {
+  return (template.legacyAliases ?? []).map((quality) => formatChord(rootPitchClass, quality, bassPitchClass, options.spelling, rootSource, bassSource));
+}
+
+function score(candidate: ChordCandidate, expectedToneCount: number, options: ChordAnalysisOptions): ChordCandidate {
+  candidate.complexity = complexityFor(candidate);
+  const result = scoreCandidate(candidate, {
+    expectedToneCount,
+    observedToneCount: candidate.intervalAnalysis.absoluteIntervals.length,
+    rootPreferred: options.rootPreference === true,
+    sameNoteSpecial: options.sameNoteSpecial === true,
+  }, options.scoring);
+  candidate.score = result.score;
+  if (options.explain) candidate.scoreBreakdown = result.breakdown;
+  return candidate;
 }
 
 function candidateFromTemplate(
-  rootPitchClass: number,
-  bassPitchClass: number | null,
+  root: NormalizedNote,
+  bass: NormalizedNote | null,
   analysis: IntervalAnalysis,
   template: ChordTemplate,
   match: ChordCandidate['evidence']['match'],
@@ -40,22 +53,20 @@ function candidateFromTemplate(
   omissions: string[] = [],
 ): ChordCandidate {
   const features = options.changeFromFirst === false ? { extensions: [], alterations: [] } : detectDominantFeatures(analysis.absoluteIntervals);
-  const quality = template.quality;
-  const bass = bassPitchClass === null || bassPitchClass === rootPitchClass ? null : formatChord(bassPitchClass, '', null);
+  const bassPitchClass = bass?.pitchClass ?? null;
+  const rootName = formatChord(root.pitchClass, '', null, options.spelling, root.source);
+  const fullName = formatChord(root.pitchClass, template.quality, bassPitchClass, options.spelling, root.source, bass?.source);
+  const bassName = bassPitchClass === null || bassPitchClass === root.pitchClass ? null : fullName.slice(fullName.lastIndexOf('/') + 1);
   const candidate: ChordCandidate = {
-    root: formatChord(rootPitchClass, '', null), rootPitchClass, rootMidi: analysis.rootMidi, quality, bass,
-    name: formatChord(rootPitchClass, quality, bassPitchClass), score: 0, complexity: 0,
+    root: rootName, rootPitchClass: root.pitchClass, rootMidi: analysis.rootMidi, quality: template.quality, bass: bassName,
+    name: fullName, score: 0, complexity: 0,
     omissions, extensions: [...new Set([...(template.extensions ?? []), ...features.extensions])],
     alterations: [...new Set([...(template.alterations ?? []), ...features.alterations])],
-    aliases: [...new Set([...enharmonicAliases(rootPitchClass, quality, bass), ...addLegacyAliases(rootPitchClass, bassPitchClass, template)])],
+    aliases: [...new Set([...enharmonicAliases(root.pitchClass, template.quality, bassName, options.spelling), ...addLegacyAliases(root.pitchClass, bassPitchClass, template, options, root.source, bass?.source)])],
     intervalAnalysis: analysis,
-    evidence: { templateId: template.id, match, inversion, voicing, notes },
+    evidence: { templateId: template.id, match, inversion, voicing, notes, notationKind: bassName ? 'slash' : 'chord' },
   };
-  candidate.complexity = complexityFor(candidate);
-  candidate.score = scoreCandidate(candidate);
-  if (options.rootPreference && inversion === 0) candidate.score = Math.min(1, candidate.score + 0.04);
-  if (options.sameNoteSpecial && match === 'exact') candidate.score = Math.min(1, candidate.score + 0.03);
-  return candidate;
+  return score(candidate, template.intervals.length, options);
 }
 
 function selectRoots(notes: readonly NormalizedNote[], options: ChordAnalysisOptions): NormalizedNote[] {
@@ -71,31 +82,8 @@ function finalize(candidates: ChordCandidate[], inputMode: ChordAnalysisResult['
     originalFirst: options.originalFirst,
     originalFirstRatio: options.originalFirstRatio,
   });
-  const selected = ranked;
-  const primary = selected[0] ?? null;
-  return { primary, alternatives: primary ? selected.slice(1) : [], candidates: selected, relations: primary ? harmonicRelations(primary) : [], inputMode, ambiguity: ambiguityFor(selected) };
-}
-
-
-function heuristicCandidates(notes: readonly NormalizedNote[], options: ChordAnalysisOptions): ChordCandidate[] {
-  if (notes.length < 3 || options.mode === 'strict') return [];
-  const candidates: ChordCandidate[] = [];
-  const root = notes[0]!;
-  const absolute = calculateIntervals(root, notes).absoluteIntervals;
-  const has = (value: number) => absolute.includes(value) || absolute.includes(value + 12);
-  if (has(4) && has(10) && has(1)) {
-    const analysis = calculateIntervals(root, notes);
-    candidates.push(candidateFromTemplate(root.pitchClass, notes[0]!.pitchClass, analysis, {
-      id: 'heuristic-7b9', quality: '7(b9)', intervals: absolute, family: 'altered', alterations: ['b9'], registerRequirement: 'compound',
-    }, 'omission', 0, analyzeVoicing(notes), notes.map((note) => note.midi), options));
-  }
-  if (has(4) && has(10) && has(8) && !has(7)) {
-    const analysis = calculateIntervals(root, notes);
-    candidates.push(candidateFromTemplate(root.pitchClass, notes[0]!.pitchClass, analysis, {
-      id: 'heuristic-7alt', quality: '7(b9,b13,no5)', intervals: absolute, family: 'altered', alterations: ['b13'], legacyAliases: ['7alt'], registerRequirement: 'compound',
-    }, 'omission', 0, analyzeVoicing(notes), notes.map((note) => note.midi), options, ['omit5']));
-  }
-  return candidates;
+  const primary = ranked[0] ?? null;
+  return { primary, alternatives: primary ? ranked.slice(1) : [], candidates: ranked, relations: primary ? harmonicRelations(primary) : [], inputMode, ambiguity: ambiguityFor(ranked) };
 }
 
 export function analyzeRegisteredNotes(notes: readonly NormalizedNote[], options: ChordAnalysisOptions = {}): ChordAnalysisResult {
@@ -108,18 +96,17 @@ export function analyzeRegisteredNotes(notes: readonly NormalizedNote[], options
     const inversion = inversionIndex(root.pitchClass, notes);
     const voicing = analyzeVoicing(notes);
     for (const template of matchTemplates(analysis.absoluteIntervals, templates)) {
-      candidates.push(candidateFromTemplate(root.pitchClass, bass.pitchClass, analysis, template, 'exact', inversion, voicing, notes.map((note) => note.midi), options));
+      candidates.push(candidateFromTemplate(root, bass, analysis, template, 'exact', inversion, voicing, notes.map((note) => note.midi), options));
     }
     if (options.mode !== 'strict') {
       for (const omission of detectOmissions(analysis.absoluteIntervals, templates)) {
-        candidates.push(candidateFromTemplate(root.pitchClass, bass.pitchClass, analysis, omission.template, 'omission', inversion, voicing, notes.map((note) => note.midi), options, omission.omissions));
+        candidates.push(candidateFromTemplate(root, bass, analysis, omission.template, 'omission', inversion, voicing, notes.map((note) => note.midi), options, omission.omissions));
       }
     }
   }
-  if (options.mode !== 'strict') candidates.push(...heuristicCandidates(notes, options));
   if (options.mode !== 'strict' && options.includePolychords !== false) {
-    const poly = detectPolychord(notes);
-    if (poly) candidates.push(poly);
+    const poly = detectPolychord(notes, (structure) => analyzeRegisteredNotes(structure, { ...options, includePolychords: false, mode: 'strict', maxCandidates: 1 }).primary);
+    if (poly) candidates.push(score(poly, poly.intervalAnalysis.absoluteIntervals.length, options));
   }
   return finalize(candidates, 'registered', options);
 }
@@ -140,8 +127,9 @@ export function analyzePitchClassesInternal(input: readonly PitchClassInput[], o
   const candidates: ChordCandidate[] = [];
   for (const rootPitchClass of pitchClasses) {
     const analysis = calculatePitchClassIntervals(rootPitchClass, pitchClasses);
+    const root: NormalizedNote = { midi: rootPitchClass + 60, pitchClass: rootPitchClass, octave: 4, source: rootPitchClass + 60 };
     for (const template of matchPitchClassTemplates(analysis.simpleIntervals, templates)) {
-      candidates.push(candidateFromTemplate(rootPitchClass, null, analysis, template, 'pitch-class', 0, 'closed', [], options));
+      candidates.push(candidateFromTemplate(root, null, analysis, template, 'pitch-class', 0, 'closed', [], options));
     }
   }
   return finalize(candidates, 'pitch-class', { ...options, mode: 'strict' });
