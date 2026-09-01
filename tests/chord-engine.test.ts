@@ -40,6 +40,19 @@ describe('register-aware chord engine', () => {
     expect(result.ambiguity).toBe('medium');
   });
 
+  it('validates and ranks typed custom templates with the built-in registry', () => {
+    const result = analyzeChord(['C4', 'F#4'], {
+      customTemplates: [{ id: 'custom-tritone', quality: 'tritone', intervals: [0, 6], family: 'custom' }],
+    });
+    expect(result.primary?.name).toBe('Ctritone');
+    expect(() => analyzeChord(['C4', 'E4'], {
+      customTemplates: [{ id: 'bad', quality: 'bad', intervals: [4, 7], family: 'custom' }],
+    })).toThrow(ChordInputError);
+    expect(() => analyzeChord(['C4', 'E4'], {
+      customTemplates: [{ id: 'major', quality: 'duplicate', intervals: [0, 4, 7], family: 'custom' }],
+    })).toThrow(ChordInputError);
+  });
+
   it('handles empty input and rejects invalid registered input', () => {
     expect(analyzeChord([]).primary).toBeNull();
     expect(() => analyzeChord(['C'])).toThrow(ChordInputError);

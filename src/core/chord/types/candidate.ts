@@ -13,6 +13,7 @@ export interface ChordEvidence {
 
 export interface ChordCandidate {
   root: string;
+  rootMidi: number | null;
   rootPitchClass: number;
   quality: string;
   bass: string | null;
