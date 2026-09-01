@@ -1,5 +1,6 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import * as core from '@chordkit/core';
 
 class FakeWorker {
   onmessage: ((event: MessageEvent<{ ok: boolean; value: number }>) => void) | null = null;
@@ -20,7 +21,6 @@ describe('Playground home', () => {
 
   it('shows omission labels beside omission candidates', async () => {
     const { ResultCard } = await import('./App');
-    const core = await import('@chordkit/core');
     const result = core.analyzeChord(['A3', 'C4', 'Eb4'], { explain: true });
     render(<ResultCard result={result} locale="zh" error="" />);
     expect(screen.getByText('Cm6/A')).toBeTruthy();
@@ -36,5 +36,14 @@ describe('Playground home', () => {
     expect(screen.getAllByText('C major').length).toBeGreaterThan(0);
     expect(screen.getByText('ii7')).toBeTruthy();
     expect(screen.getAllByText(/V/).length).toBeGreaterThan(0);
+  });
+
+  it('exposes add-to-Harmony actions for analyzed candidates', async () => {
+    const { ResultCard } = await import('./App');
+    const add = vi.fn();
+    const result = core.analyzeChord(['C3', 'E3', 'G3']);
+    render(<ResultCard result={result} locale="zh" error="" onAddToHarmony={add} />);
+    fireEvent.click(screen.getAllByText('加入 Harmony 进行')[0]!);
+    expect(add).toHaveBeenCalledWith(result.primary);
   });
 });

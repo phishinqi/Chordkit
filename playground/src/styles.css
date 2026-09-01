@@ -81,3 +81,50 @@ footer { display:flex; justify-content:space-between; gap:16px; padding:18px 28p
 .roman-events strong { font: 800 1.8rem/.9 'Noto Serif SC', serif; }
 .roman-events small, .roman-events span { font: 9px 'DM Mono', monospace; color: #605c54; }
 @media (max-width: 850px) { .harmony-grid { grid-template-columns: 1fr; } }
+.source-switch { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.source-switch > div:first-child { flex: 1 1 190px; }
+.source-switch h3 { margin: 3px 0 0; }
+.source-switch small { font: 10px 'DM Mono', monospace; color: #b63123; }
+.source-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.source-tabs button, .harmony-upload { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 7px 10px; border: 1px solid #151411; background: transparent; font-size: 11px; cursor: pointer; }
+.source-tabs button.active { color: #f4efe3; background: #151411; }
+.source-tabs button:disabled { opacity: .4; cursor: not-allowed; }
+.harmony-upload input { display: none; }
+.preset-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.preset-card { display: grid; gap: 6px; min-height: 106px; padding: 12px; border: 1px solid #151411; color: #151411; background: #f8f4ea; text-align: left; cursor: pointer; }
+.preset-card.active { color: #f4efe3; background: #b63123; }
+.preset-card small { font: 9px 'DM Mono', monospace; opacity: .75; }
+.preset-card strong { font-size: 13px; }
+.preset-card span { font: 9px/1.45 'DM Mono', monospace; opacity: .9; }
+.progression-cards { display: flex; flex-wrap: wrap; gap: 9px; align-items: stretch; }
+.progression-chord { display: grid; min-width: 145px; gap: 9px; padding: 10px; border: 1px solid #151411; background: #f4efe3; cursor: pointer; }
+.progression-chord.selected { outline: 3px solid #b63123; outline-offset: -3px; }
+.chord-parts { display: flex; flex-wrap: wrap; gap: 4px; }
+.chord-parts b { padding: 3px 5px; color: #f4efe3; background: #151411; font: 10px 'DM Mono', monospace; }
+.progression-chord > small { font: 10px 'DM Mono', monospace; }
+.card-actions { display: flex; gap: 4px; }
+.card-actions button, .candidate-add, .add-harmony { border: 1px solid #151411; background: transparent; cursor: pointer; }
+.card-actions button { display: grid; place-items: center; width: 26px; height: 26px; }
+.add-card { display: grid; place-items: center; align-content: center; min-width: 110px; gap: 5px; border: 1px dashed #151411; background: transparent; color: #605c54; font-size: 11px; cursor: pointer; }
+.chord-builder { display: grid; gap: 14px; }
+.choice-row { display: grid; grid-template-columns: 90px 1fr; gap: 10px; align-items: start; }
+.choice-row > span { padding-top: 7px; color: #605c54; font: 10px 'DM Mono', monospace; }
+.choice-row > div { display: flex; flex-wrap: wrap; gap: 5px; }
+.choice-row button { border: 1px solid #151411; padding: 6px 8px; background: #f4efe3; font: 10px 'DM Mono', monospace; cursor: pointer; }
+.choice-row button.active { color: #f4efe3; background: #151411; }
+.builder-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 12px; border-top: 1px solid #151411; }
+.builder-preview span { color: #605c54; font: 10px 'DM Mono', monospace; }
+.builder-preview strong { flex: 1; font: 600 15px 'DM Mono', monospace; }
+.harmony-expert { border-top: 1px solid #151411; padding-top: 12px; }
+.harmony-expert summary { cursor: pointer; font: 11px 'DM Mono', monospace; }
+.harmony-expert label { display: grid; gap: 6px; margin-top: 10px; color: #605c54; font: 10px 'DM Mono', monospace; }
+.harmony-expert textarea { width: 100%; min-height: 104px; padding: 10px; border: 1px solid #151411; color: #f4efe3; background: #151411; font: 11px/1.5 'DM Mono', monospace; }
+.timeline-card { display: grid; gap: 12px; }
+.timeline-segments { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.timeline-segments button { display: grid; flex: 0 0 145px; gap: 6px; min-height: 92px; padding: 10px; border: 1px solid #151411; background: #f4efe3; text-align: left; cursor: pointer; }
+.timeline-segments button.selected { color: #f4efe3; background: #151411; }
+.timeline-segments small, .timeline-segments span { font: 9px 'DM Mono', monospace; }
+.timeline-segments strong { font: 800 1.5rem/.9 'Noto Serif SC', serif; }
+.add-harmony { margin: 12px 0; padding: 7px 9px; font-size: 11px; }
+.candidate-add { margin-top: 6px; padding: 4px 6px; color: #b63123; border-color: #b63123; font: 9px 'DM Mono', monospace; }
+@media (max-width: 850px) { .preset-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.choice-row { grid-template-columns: 1fr; gap: 5px; }.progression-cards { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 5px; }.progression-chord { flex: 0 0 150px; } }
