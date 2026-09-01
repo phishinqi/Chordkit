@@ -43,3 +43,18 @@ footer { display:flex; justify-content:space-between; gap:16px; padding:18px 28p
 .candidate-row p { margin: 0; border: 0; }
 .omission-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
 .omission-tags small { padding: 3px 5px; color: #b63123; border: 1px solid #b63123; font: 9px 'DM Mono', monospace; letter-spacing: .03em; }
+:root { --piano-white-count: 14; }
+.lab-grid { align-items: start; }
+.piano { position: relative; height: 238px; margin: 24px 0; overflow: hidden; border: 1px solid #151411; background: #151411; isolation: isolate; }
+.piano button { border: 0; cursor: pointer; transition: background-color .12s ease, transform .12s ease; }
+.piano button:disabled { cursor: default; }
+.piano-whites { position: absolute; inset: 0; display: flex; }
+.piano .white { position: relative; flex: 1 1 0; min-width: 0; border-right: 1px solid #151411; color: #151411; background: #fffdf7; }
+.piano .white:last-child { border-right: 0; }
+.piano .white:hover, .piano .white.selected { background: #e36b58; }
+.piano .white span { position: absolute; right: 0; bottom: 9px; left: 0; text-align: center; font: 9px 'DM Mono', monospace; }
+.piano-blacks { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.piano .black { position: absolute; top: 0; width: calc(100% / var(--piano-white-count) * .58); height: 64%; transform: translateX(-50%); border: 1px solid #151411; border-top: 0; border-radius: 0 0 4px 4px; pointer-events: auto; background: #151411; }
+.piano .black:hover, .piano .black.selected { background: #b63123; }
+.piano-note { position: absolute; z-index: 3; right: 9px; bottom: 7px; display: flex; gap: 5px; align-items: center; color: #605c54; font: 9px 'DM Mono', monospace; pointer-events: none; }
+@media (max-width: 850px) { .piano { height: 205px; }.piano .black { height: 61%; }.piano-note { left: 8px; right: auto; } }
