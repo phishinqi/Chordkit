@@ -76,5 +76,15 @@ export default function App() {
 
 function Lab({ title, kicker, children }: { title: string; kicker: string; children: ReactNode }) { return <section className="lab"><header className="lab-heading"><p>{kicker}</p><h1>{title}</h1></header>{children}</section>; }
 function Metric({ label, value }: { label: string; value: number }) { return <div className="metric"><span>{label}</span><strong>{value}</strong></div>; }
-function ResultCard({ result, locale, error }: { result: ReturnType<typeof core.analyzeChord> | null; locale: Locale; error: string }) { const tx = t(locale); if (!result) return <div className="card"><p className="error">{error}</p></div>; return <div className="card result-card"><span className="index">PRIMARY CANDIDATE</span><h2>{result.primary?.name ?? 'No match'}</h2><p>{result.primary?.quality} · score {result.primary?.score}</p><div className="result-columns"><div><h3>{tx.candidates}</h3>{result.candidates.slice(0, 5).map((candidate) => <p key={candidate.name}><b>{candidate.name}</b><span>{candidate.score}</span></p>)}</div><div><h3>{tx.relations}</h3>{result.relations.length ? result.relations.map((relation) => <p key={`${relation.type}-${relation.target}`}>{relation.target}</p>) : <p>—</p>}</div></div><JsonPanel locale={locale} value={result}/></div>; }
+export function omissionLabel(omission: string, locale: Locale): string {
+  const degree = omission.replace(/^omit/, '');
+  return locale === 'zh' ? `省略 ${degree}` : `omit ${degree}`;
+}
+
+export function ResultCard({ result, locale, error }: { result: ReturnType<typeof core.analyzeChord> | null; locale: Locale; error: string }) {
+  const tx = t(locale);
+  if (!result) return <div className="card"><p className="error">{error}</p></div>;
+  return <div className="card result-card"><span className="index">PRIMARY CANDIDATE</span><h2>{result.primary?.name ?? 'No match'}</h2><p>{result.primary?.quality} · score {result.primary?.score}</p><div className="result-columns"><div><h3>{tx.candidates}</h3>{result.candidates.map((candidate, index) => <div className="candidate-row" key={`${candidate.name}-${index}`}><p><b>{candidate.name}</b><span>{candidate.score}</span></p>{candidate.omissions.length > 0 && <div className="omission-tags">{candidate.omissions.map((omission) => <small key={omission}>{omissionLabel(omission, locale)}</small>)}</div>}</div>)}</div><div><h3>{tx.relations}</h3>{result.relations.length ? result.relations.map((relation) => <p key={`${relation.type}-${relation.target}`}>{relation.target}</p>) : <p>—</p>}</div></div><JsonPanel locale={locale} value={result}/></div>;
+}
+
 async function collect(source: AsyncIterable<unknown>) { const result: unknown[] = []; for await (const item of source) result.push(item); return result; }
