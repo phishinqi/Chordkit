@@ -1,6 +1,6 @@
 import { detectDominantFeatures, detectPolychord, harmonicRelations } from '../advanced';
 import { detectOmissions, inversionIndex, analyzeVoicing, matchPitchClassTemplates, matchTemplates, rootCandidates } from '../analysis';
-import { calculateIntervals, calculatePitchClassIntervals } from '../intervals';
+import { calculateIntervals, calculatePitchClassIntervals, hasCompoundInterval, hasInterval, hasSimpleInterval } from '../intervals';
 import { enharmonicAliases, formatChord } from '../naming';
 import { normalizePitchClass, pitchClassFromName } from '../normalize';
 import { ambiguityFor, complexityFor, rankCandidates, scoreCandidate } from '../scoring';
@@ -69,6 +69,33 @@ function candidateFromTemplate(
   return score(candidate, template.intervals.length, options);
 }
 
+function alteredDegrees(intervals: readonly number[]): string[] {
+  const alterations: string[] = [];
+  if (hasCompoundInterval(intervals, 1)) alterations.push('b9');
+  if (hasCompoundInterval(intervals, 3)) alterations.push('#9');
+  if (hasSimpleInterval(intervals, 6)) alterations.push('b5');
+  else if (hasCompoundInterval(intervals, 6)) alterations.push('#11');
+  if (hasSimpleInterval(intervals, 8)) alterations.push('#5');
+  else if (hasCompoundInterval(intervals, 8)) alterations.push('b13');
+  return alterations;
+}
+
+function alteredDominantCandidate(root: NormalizedNote, bass: NormalizedNote, analysis: IntervalAnalysis, inversion: number, voicing: ChordCandidate['evidence']['voicing'], notes: readonly NormalizedNote[], options: ChordAnalysisOptions): ChordCandidate | null {
+  if (!hasInterval(analysis.absoluteIntervals, 4) || !hasInterval(analysis.absoluteIntervals, 10)) return null;
+  const alterations = alteredDegrees(analysis.absoluteIntervals);
+  if (alterations.length < 2) return null;
+  const hasFifthFamily = hasInterval(analysis.absoluteIntervals, 6) || hasInterval(analysis.absoluteIntervals, 7) || hasInterval(analysis.absoluteIntervals, 8);
+  const quality = `7(${[...alterations, ...(hasFifthFamily ? [] : ['no5'])].join(',')})`;
+  const template: ChordTemplate = {
+    id: `altered-dominant-${alterations.join('-')}${hasFifthFamily ? '' : '-no5'}`,
+    quality,
+    intervals: analysis.absoluteIntervals,
+    family: 'altered',
+    alterations,
+  };
+  return candidateFromTemplate(root, bass, analysis, template, 'exact', inversion, voicing, notes.map((note) => note.midi), options);
+}
+
 function selectRoots(notes: readonly NormalizedNote[], options: ChordAnalysisOptions): NormalizedNote[] {
   const roots = rootCandidates(notes);
   return options.wholeDetect === false ? roots.slice(0, 1) : roots;
@@ -102,6 +129,8 @@ export function analyzeRegisteredNotes(notes: readonly NormalizedNote[], options
       for (const omission of detectOmissions(analysis.absoluteIntervals, templates)) {
         candidates.push(candidateFromTemplate(root, bass, analysis, omission.template, 'omission', inversion, voicing, notes.map((note) => note.midi), options, omission.omissions));
       }
+      const altered = alteredDominantCandidate(root, bass, analysis, inversion, voicing, notes, options);
+      if (altered) candidates.push(altered);
     }
   }
   if (options.mode !== 'strict' && options.includePolychords !== false) {
