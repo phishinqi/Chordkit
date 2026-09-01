@@ -2,6 +2,23 @@ import type { IntervalAnalysis } from './interval';
 
 export type ChordRelationType = 'tritoneSub' | 'symmetricEquivalent' | 'enharmonicEquivalent';
 export type AmbiguityLevel = 'none' | 'low' | 'medium' | 'high';
+export type ChordNotationKind = 'chord' | 'slash' | 'polychord';
+
+export interface ScoreComponent {
+  id: string;
+  label: string;
+  value: number;
+  rationale: string;
+}
+
+export interface ScoreBreakdown {
+  rawScore: number;
+  normalizedScore: number;
+  components: ScoreComponent[];
+  templateEvidence: string;
+  rootEvidence: string;
+  bassEvidence: string;
+}
 
 export interface ChordEvidence {
   templateId?: string;
@@ -9,6 +26,9 @@ export interface ChordEvidence {
   inversion: number;
   voicing: 'closed' | 'open' | 'spread';
   notes: number[];
+  notationKind?: ChordNotationKind;
+  upperStructure?: string;
+  lowerStructure?: string;
 }
 
 export interface ChordCandidate {
@@ -26,6 +46,7 @@ export interface ChordCandidate {
   aliases: string[];
   intervalAnalysis: IntervalAnalysis;
   evidence: ChordEvidence;
+  scoreBreakdown?: ScoreBreakdown;
 }
 
 export interface ChordRelation {

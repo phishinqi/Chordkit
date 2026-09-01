@@ -1,27 +1,68 @@
 import type { ChordCandidate, NormalizedNote } from '../types';
 import { calculateIntervals } from '../intervals';
 import { canonicalNoteName } from '../normalize';
-import { BASIC_TEMPLATES } from '../templates';
-import { matchTemplates } from '../analysis/templateMatcher';
 
-export function detectPolychord(notes: readonly NormalizedNote[]): ChordCandidate | null {
-  if (notes.length < 4) return null;
-  const bass = notes[0]!;
-  const upper = notes.slice(1);
-  const splitIndex = notes.length >= 6 ? Math.floor(notes.length / 2) : 1;
-  const lower = notes.slice(0, splitIndex);
-  const upperStructure = notes.slice(splitIndex);
-  const root = upperStructure[0]!;
-  const matches = matchTemplates(calculateIntervals(root, upperStructure).absoluteIntervals, BASIC_TEMPLATES);
-  const template = matches.find((candidate) => ['major', 'minor', 'diminished', 'augmented'].includes(candidate.id));
-  if (!template) return null;
-  const rootName = canonicalNoteName(root.pitchClass);
-  const bassName = canonicalNoteName(bass.pitchClass);
-  const analysis = calculateIntervals(root, upperStructure);
+export type StructureRecognizer = (notes: readonly NormalizedNote[]) => ChordCandidate | null;
+
+function candidateSplits(notes: readonly NormalizedNote[]): number[] {
+  const splits: Array<{ index: number; gap: number }> = [];
+  for (let index = 1; index < notes.length; index += 1) {
+    const gap = notes[index]!.midi - notes[index - 1]!.midi;
+    if (gap >= 4) splits.push({ index, gap });
+  }
+  return splits.sort((a, b) => b.gap - a.gap || a.index - b.index).map((entry) => entry.index);
+}
+
+function primaryName(candidate: ChordCandidate): string {
+  return candidate.evidence.notationKind === 'slash' && candidate.bass ? `${candidate.root}${candidate.quality}` : candidate.name;
+}
+
+function pedalStructure(note: NormalizedNote): ChordCandidate {
+  const analysis = calculateIntervals(note, [note]);
+  const name = canonicalNoteName(note.pitchClass);
   return {
-    root: rootName, rootPitchClass: root.pitchClass, rootMidi: analysis.rootMidi, quality: template.quality, bass: bassName,
-    name: `${rootName}${template.quality}/${bassName}`, score: 0.65, complexity: 1.2,
+    root: name, rootPitchClass: note.pitchClass, rootMidi: note.midi, quality: '', bass: null, name, score: 0.7, complexity: 0,
     omissions: [], extensions: [], alterations: [], aliases: [], intervalAnalysis: analysis,
-    evidence: { templateId: template.id, match: 'polychord', inversion: lower.length, voicing: 'spread', notes: upperStructure.map((note) => note.midi) },
+    evidence: { match: 'pitch-class', inversion: 0, voicing: 'closed', notes: [note.midi], notationKind: 'chord' },
   };
+}
+
+export function detectPolychord(notes: readonly NormalizedNote[], recognize: StructureRecognizer): ChordCandidate | null {
+  if (notes.length < 4) return null;
+  for (const split of candidateSplits(notes)) {
+    const lowerNotes = notes.slice(0, split);
+    const upperNotes = notes.slice(split);
+    if (!lowerNotes.length || upperNotes.length < 2) continue;
+    const lower = recognize(lowerNotes) ?? (lowerNotes.length === 1 ? pedalStructure(lowerNotes[0]!) : null);
+    const upper = recognize(upperNotes);
+    if (!lower || !upper || lower.score < 0.6 || upper.score < 0.6) continue;
+    const upperStructure = primaryName(upper);
+    const lowerStructure = primaryName(lower);
+    const analysis = calculateIntervals(upperNotes[0]!, upperNotes);
+    return {
+      root: upper.root,
+      rootPitchClass: upper.rootPitchClass,
+      rootMidi: upper.rootMidi,
+      quality: upper.quality,
+      bass: lower.root,
+      name: `${upperStructure} | ${lowerStructure}`,
+      score: 0,
+      complexity: upper.complexity + lower.complexity + 1,
+      omissions: [],
+      extensions: [],
+      alterations: [],
+      aliases: [],
+      intervalAnalysis: analysis,
+      evidence: {
+        match: 'polychord',
+        inversion: 0,
+        voicing: 'spread',
+        notes: notes.map((note) => note.midi),
+        notationKind: 'polychord',
+        upperStructure,
+        lowerStructure,
+      },
+    };
+  }
+  return null;
 }
