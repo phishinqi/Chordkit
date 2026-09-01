@@ -58,3 +58,9 @@ footer { display:flex; justify-content:space-between; gap:16px; padding:18px 28p
 .piano .black:hover, .piano .black.selected { background: #b63123; }
 .piano-note { position: absolute; z-index: 3; right: 9px; bottom: 7px; display: flex; gap: 5px; align-items: center; color: #605c54; font: 9px 'DM Mono', monospace; pointer-events: none; }
 @media (max-width: 850px) { .piano { height: 205px; }.piano .black { height: 61%; }.piano-note { left: 8px; right: auto; } }
+
+.piano-shell { margin: 24px 0; }
+.piano-shell .piano { margin: 0; }
+.piano .black { width: calc(100% / var(--piano-white-count) * .44); }
+.piano-note { position: static; margin: 8px 0 0; padding: 0; display: flex; gap: 6px; align-items: center; color: #605c54; font: 9px 'DM Mono', monospace; pointer-events: none; }
+@media (max-width: 850px) { .piano-shell { margin: 20px 0; } }
