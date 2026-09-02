@@ -73,10 +73,20 @@ export function classifyNonChordTones(segments: readonly ChordTimelineSegment[],
     const candidate = harmonies[current.segmentIndex]?.primary;
     if (!candidate) continue;
     const harmonic = templatePitchClasses(candidate.chord);
-    if (harmonic.has(normalizePitchClass(current.midi))) continue;
     const overrideKey = `${current.segmentIndex}:${current.midi}`;
     const override = overrides.nonChordTones?.[overrideKey];
-    const automatic = classification(voice[position - 1], current, voice[position + 1], harmonic, candidate.roman.special);
+    const previous = voice[position - 1];
+    const next = voice[position + 1];
+    const isResolvingSus4 = candidate.chord.quality.includes('sus4')
+      && normalizePitchClass(current.midi) === normalizePitchClass(candidate.chord.rootPitchClass + 5)
+      && previous?.midi === current.midi
+      && next !== undefined
+      && isStep(next.midi - current.midi)
+      && next.midi < current.midi;
+    if (harmonic.has(normalizePitchClass(current.midi)) && !isResolvingSus4) continue;
+    const automatic = isResolvingSus4
+      ? { kind: 'suspension' as const, confidence: 0.8, evidence: ['Prepared sus4 pitch resolves downward by step'] }
+      : classification(previous, current, next, harmonic, candidate.roman.special);
     output.push({ id: `${current.voiceId}:${current.segmentIndex}:${current.midi}`, voiceId: current.voiceId, segmentIndex: current.segmentIndex, midi: current.midi, kind: override ?? automatic.kind, confidence: override ? 1 : automatic.confidence, source: override ? 'override' : 'automatic', evidence: override ? ['Manual NCT override'] : automatic.evidence });
   }
   return output;

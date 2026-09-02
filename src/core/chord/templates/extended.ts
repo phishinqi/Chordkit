@@ -4,6 +4,8 @@ export const EXTENDED_TEMPLATES: ChordTemplate[] = [
   { id: 'add9', quality: 'add9', intervals: [0, 4, 7, 14], family: 'extended', extensions: [9], registerRequirement: 'compound' },
   { id: 'm-add9', quality: 'm(add9)', intervals: [0, 3, 7, 14], family: 'extended', extensions: [9], registerRequirement: 'compound' },
   { id: 'add11', quality: 'add11', intervals: [0, 4, 7, 17], family: 'extended', extensions: [11], registerRequirement: 'compound' },
+  { id: '7-add11', quality: '7add11', intervals: [0, 4, 7, 10, 17], family: 'extended', extensions: [11], registerRequirement: 'compound' },
+  { id: '7-add11-cluster', quality: '7add11', intervals: [0, 4, 5, 7, 10], family: 'extended', extensions: [11], avoidIntervals: [5], registerRequirement: 'any' },
   { id: 'm-add11', quality: 'm(add11)', intervals: [0, 3, 7, 17], family: 'extended', extensions: [11], legacyAliases: ['m add11'], registerRequirement: 'compound' },
   { id: 'add6-9', quality: '6/9', intervals: [0, 4, 7, 9, 14], family: 'extended', extensions: [9], registerRequirement: 'compound' },
   { id: 'm6-9', quality: 'm6/9', intervals: [0, 3, 7, 9, 14], family: 'extended', extensions: [9], registerRequirement: 'compound' },

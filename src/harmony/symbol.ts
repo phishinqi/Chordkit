@@ -18,7 +18,15 @@ function rootAndBody(symbol: string): { root: string; body: string; bass: string
 
 function qualityIntervals(body: string, grammar: SymbolGrammar): { quality: string; intervals: number[] } {
   const normalized = body.replace(/\s+/g, '').replace(/^Δ/, 'maj').replace(/^M/, 'maj').replace(/^-/,'m');
-  const lowered = normalized.toLowerCase();
+  let depth = 0;
+  for (const character of normalized) {
+    if (character === '(') depth += 1;
+    if (character === ')') depth -= 1;
+    if (depth < 0) throw new ChordInputError(`Invalid chord modifier parentheses: ${body}`);
+  }
+  if (depth !== 0) throw new ChordInputError(`Invalid chord modifier parentheses: ${body}`);
+  const syntax = normalized.replace(/[()]/g, '');
+  const lowered = syntax.toLowerCase();
   let intervals: number[];
   let quality: string;
   if (/^5$/.test(lowered)) { intervals = [0, 7]; quality = '5'; }
@@ -27,6 +35,7 @@ function qualityIntervals(body: string, grammar: SymbolGrammar): { quality: stri
   else if (/^(?:aug|\+)7?$/.test(lowered)) { intervals = lowered.endsWith('7') ? [0, 4, 8, 10] : [0, 4, 8]; quality = lowered.endsWith('7') ? 'aug7' : 'aug'; }
   else if (/^sus2/.test(lowered)) { intervals = [0, 2, 7]; quality = 'sus2'; }
   else if (/^sus(?:4)?/.test(lowered)) { intervals = [0, 5, 7]; quality = 'sus4'; }
+  else if (/^(?:7|9|11|13)/.test(lowered)) { intervals = [0, 4, 7, 10]; quality = '7'; }
   else if (/^(?:min|m(?!aj))/.test(lowered)) { intervals = [0, 3, 7]; quality = 'm'; }
   else { intervals = [0, 4, 7]; quality = 'major'; }
 
@@ -51,7 +60,7 @@ function qualityIntervals(body: string, grammar: SymbolGrammar): { quality: stri
   }
   if (/no3|omit3/i.test(normalized)) intervals = intervals.filter((interval) => interval % 12 !== 3 && interval % 12 !== 4);
   if (/no5|omit5/i.test(normalized)) intervals = intervals.filter((interval) => interval % 12 !== 7);
-  if (!/^(?:|m|min|-|maj|M|Δ|dim|°|ø|m7b5|half-dim|aug|\+|sus|add|5|7|6|9|11|13|\(|,|b|#|no|omit|\/)+$/i.test(normalized)) throw new ChordInputError(`Unsupported chord symbol syntax: ${body}`);
+  if (!/^(?:|m|min|-|maj|M|Δ|dim|°|ø|m7b5|half-dim|aug|\+|sus|add|2|3|4|5|6|7|9|11|13|,|b|#|no|omit|\/)+$/i.test(syntax)) throw new ChordInputError(`Unsupported chord symbol syntax: ${body}`);
   return { quality, intervals: [...new Set(intervals)].sort((left, right) => left - right) };
 }
 
@@ -62,7 +71,7 @@ export function parseChordSymbol(symbol: string, grammar: SymbolGrammar = 'stand
     const upper = parseChordSymbol(upperText, grammar);
     const lower = parseChordSymbol(lowerText, grammar);
     const notes = [...lower.notes.map((note) => note - 12), ...upper.notes];
-    return { symbol, root: lower.root, rootPitchClass: lower.rootPitchClass, bass: lower.bass, bassPitchClass: lower.bassPitchClass, quality: `${upper.symbol} | ${lower.symbol}`, intervals: [], notes: [...new Set(notes)].sort((left, right) => left - right), analysis: analyzeChord(notes, { explain: true, spelling: { preserveSource: true, key: lower.root } }) };
+    return { symbol, root: lower.root, rootPitchClass: lower.rootPitchClass, bass: lower.bass, bassPitchClass: lower.bassPitchClass, quality: `${upper.symbol} | ${lower.symbol}`, intervals: [], notes: [...new Set(notes)].sort((left, right) => left - right), analysis: analyzeChord(notes, { explain: true, polyChordFirst: true, spelling: { preserveSource: true, key: lower.root } }) };
   }
   const { root, body, bass } = rootAndBody(symbol);
   const rootPitchClass = pitchClassFromName(root);

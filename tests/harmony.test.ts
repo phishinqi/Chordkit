@@ -9,6 +9,12 @@ describe('Harmony analysis', () => {
     expect(parseChordSymbol('CΔ7', 'permissive').analysis.primary?.name).toBe('Cmaj7');
     expect(parseChordSymbol('C5').analysis.primary?.name).toBe('C5');
     expect(parseChordSymbol('D | C5').analysis.primary?.evidence.notationKind).toBe('polychord');
+    expect(parseChordSymbol('Ab7(no3)').analysis.primary?.name).toBe('Ab7');
+    expect(parseChordSymbol('Cmaj7(no5)').analysis.primary?.name).toBe('Cmaj7(no5)');
+    expect(parseChordSymbol('G7(omit5)').analysis.primary?.name).toBe('G7(no5)');
+    expect(parseChordSymbol('G7add11').analysis.primary?.name).toBe('G7add11');
+    expect(parseChordSymbol('G7(add11)').analysis.primary?.name).toBe('G7add11');
+    expect(() => parseChordSymbol('G7(add11')).toThrow();
     expect(() => parseChordSymbol('C what is this')).toThrow();
   });
 
@@ -16,6 +22,7 @@ describe('Harmony analysis', () => {
     expect(analyzeHarmony('Cmaj7', { key: { tonic: 'C', mode: 'major' } }).primary?.renderings.analysis).toMatch(/^I/);
     expect(analyzeHarmony('D7', { key: { tonic: 'C', mode: 'major' } }).primary?.renderings.analysis).toBe('V/V');
     expect(analyzeHarmony('Db7', { key: { tonic: 'C', mode: 'major' } }).primary?.renderings.analysis).toBe('SubV/I');
+    expect(analyzeHarmony('A7', { key: { tonic: 'C', mode: 'major' } }).primary?.renderings.analysis).toBe('V/ii');
   });
 
   it('returns ranked deterministic key candidates and local functional events for a ii-V-I', () => {
@@ -33,6 +40,11 @@ describe('Harmony analysis', () => {
     expect(analyzeHarmony('Eb/G', { key: { tonic: 'D', mode: 'harmonicMinor' } }).primary?.roman.special).toBe('N');
     const augmented = analyzeHarmony(['Ab3', 'C4', 'F#4'], { key: { tonic: 'C', mode: 'naturalMinor' } });
     expect(augmented.primary?.roman.special).toBe('It+6');
+  });
+
+  it('uses profile-specific tritone-substitution and augmented-sixth precedence', () => {
+    expect(analyzeHarmony('Ab7', { key: { tonic: 'C', mode: 'major' }, profile: 'jazz' }).primary?.renderings.analysis).toBe('SubV/V');
+    expect(analyzeHarmony([58, 62, 68], { key: { tonic: 'D', mode: 'harmonicMinor' }, profile: 'classical' }).primary?.roman.special).toBe('It+6');
   });
 
   it('keeps a tonic-anchored A-minor cycle in one natural-minor context', () => {

@@ -1,5 +1,5 @@
 import { canonicalNoteName, normalizePitchClass, type ChordCandidate } from '../core/chord';
-import type { FunctionalKind, RomanNumeralAst, RomanRenderings, TonalContext, TonalMode } from './types';
+import type { FunctionalKind, HarmonyProfile, RomanNumeralAst, RomanRenderings, TonalContext, TonalMode } from './types';
 import { scalePitchClasses, signedDistance } from './scale';
 
 function qualityCase(candidate: ChordCandidate): RomanNumeralAst['case'] {
@@ -27,23 +27,37 @@ function degreeFor(context: TonalContext, pitchClass: number): { degree: number;
 
 function figuredBass(candidate: ChordCandidate): string | undefined {
   if (candidate.evidence.inversion === 0) return undefined;
-  const count = candidate.intervalAnalysis.absoluteIntervals.length;
+  const count = new Set(candidate.intervalAnalysis.pitchClasses).size;
   if (count >= 4) return candidate.evidence.inversion === 1 ? '65' : candidate.evidence.inversion === 2 ? '43' : '42';
   return '6';
 }
 
-function specialFunction(candidate: ChordCandidate, context: TonalContext): { special?: RomanNumeralAst['special']; function?: FunctionalKind } {
+function specialFunction(candidate: ChordCandidate, context: TonalContext, profile: HarmonyProfile = 'general'): { special?: RomanNumeralAst['special']; function?: FunctionalKind } {
   const pcs = new Set(candidate.evidence.notes.map((note) => normalizePitchClass(note - context.tonicPitchClass)));
   const has = (...values: number[]) => values.every((value) => pcs.has(normalizePitchClass(value)));
   if (context.mode !== 'major' && candidate.rootPitchClass === normalizePitchClass(context.tonicPitchClass + 1) && !candidate.quality.startsWith('m') && !candidate.quality.startsWith('dim') && !candidate.quality.startsWith('aug') && !candidate.quality.startsWith('sus')) return { special: 'N', function: 'neapolitan' };
-  if (has(8, 0, 6)) return { special: pcs.has(2) ? (pcs.has(3) ? 'Ger+6' : 'Fr+6') : 'It+6', function: 'augmentedSixth' };
+  // In a major context this pitch collection is also a conventional tritone
+  // substitute. Reserve augmented-sixth analysis for minor-mode contexts so
+  // Ab7 in C major can retain its SubV/V function.
+  if (context.mode !== 'major' && profile !== 'jazz' && has(8, 0, 6)) return { special: pcs.has(2) ? (pcs.has(3) ? 'Ger+6' : 'Fr+6') : 'It+6', function: 'augmentedSixth' };
   if (candidate.quality.startsWith('dim7') && pcs.has(0)) return { special: 'CT°7', function: 'commonToneDiminished' };
   return {};
 }
 
 function borrowedMode(candidate: ChordCandidate, context: TonalContext): TonalMode | undefined {
   const modes: TonalMode[] = context.mode === 'major' ? ['naturalMinor', 'harmonicMinor', 'melodicMinor'] : ['major', 'dorian', 'phrygian'];
-  return modes.find((mode) => scalePitchClasses({ ...context, mode }).includes(candidate.rootPitchClass));
+  const notes = candidate.evidence.notes.map(normalizePitchClass);
+  return modes.find((mode) => {
+    const scale = scalePitchClasses({ ...context, mode });
+    return notes.every((note) => scale.includes(note)) && notes.some((note) => !scalePitchClasses(context).includes(note));
+  });
+}
+
+function targetCase(context: TonalContext, target: { degree: number }): RomanNumeralAst['case'] {
+  const scale = scalePitchClasses(context);
+  const root = scale[target.degree - 1]!;
+  const third = scale[(target.degree + 1) % scale.length]!;
+  return normalizePitchClass(third - root) === 3 ? 'lower' : 'upper';
 }
 
 function applied(candidate: ChordCandidate, context: TonalContext): { target?: string; function?: FunctionalKind } {
@@ -57,8 +71,8 @@ function applied(candidate: ChordCandidate, context: TonalContext): { target?: s
   for (const targetPitchClass of scale) {
     const target = degreeFor(context, targetPitchClass);
     if (target.degree === 1) continue;
-    if (dominant && candidate.rootPitchClass === normalizePitchClass(targetPitchClass + 7)) return { target: renderDegree(target.degree, target.accidental, 'upper'), function: 'appliedDominant' };
-    if (diminished && candidate.rootPitchClass === normalizePitchClass(targetPitchClass - 1)) return { target: renderDegree(target.degree, target.accidental, 'upper'), function: 'appliedLeadingTone' };
+    if (dominant && candidate.rootPitchClass === normalizePitchClass(targetPitchClass + 7)) return { target: renderDegree(target.degree, target.accidental, targetCase(context, target)), function: 'appliedDominant' };
+    if (diminished && candidate.rootPitchClass === normalizePitchClass(targetPitchClass - 1)) return { target: renderDegree(target.degree, target.accidental, 'lower'), function: 'appliedLeadingTone' };
   }
   if (dominant) for (const targetPitchClass of scale) {
     const target = degreeFor(context, targetPitchClass);
@@ -73,11 +87,13 @@ export function renderDegree(degree: number | null, accidental: RomanNumeralAst[
   return `${accidental}${letterCase === 'lower' ? source.toLowerCase() : source}`;
 }
 
-export function romanForCandidate(candidate: ChordCandidate, context: TonalContext): RomanNumeralAst {
+export function romanForCandidate(candidate: ChordCandidate, context: TonalContext, profile: HarmonyProfile = 'general'): RomanNumeralAst {
   const location = degreeFor(context, candidate.rootPitchClass);
-  const special = specialFunction(candidate, context);
+  const special = specialFunction(candidate, context, profile);
   const appliedFunction = special.function ? {} : applied(candidate, context);
-  const borrowedFrom = !special.function && !appliedFunction.function && !scalePitchClasses(context).includes(candidate.rootPitchClass) ? borrowedMode(candidate, context) : undefined;
+  const borrowedFrom = !special.function && !appliedFunction.function
+    && (candidate.evidence.notationKind === 'polychord' || candidate.evidence.notationKind === 'slash' || !scalePitchClasses(context).includes(candidate.rootPitchClass))
+    ? borrowedMode(candidate, context) : undefined;
   const functionKind: FunctionalKind = special.function ?? appliedFunction.function ?? (borrowedFrom ? 'borrowed' : scalePitchClasses(context).includes(candidate.rootPitchClass) ? 'diatonic' : Math.abs(signedDistance(context.tonicPitchClass, candidate.rootPitchClass)) === 3 || Math.abs(signedDistance(context.tonicPitchClass, candidate.rootPitchClass)) === 4 ? 'chromaticMediant' : 'chromatic');
   const diminished = candidate.quality.includes('m7b5') ? 'ø' : candidate.quality.startsWith('dim') ? '°' : undefined;
   return { degree: location.degree, accidental: location.accidental, case: qualityCase(candidate), quality: candidate.quality, diminished, extensions: candidate.extensions, alterations: candidate.alterations, omissions: candidate.omissions, inversion: candidate.evidence.inversion, figuredBass: figuredBass(candidate), appliedTarget: appliedFunction.target, borrowedFrom, special: special.special, function: functionKind };
@@ -97,14 +113,20 @@ function qualitySuffix(ast: RomanNumeralAst): string {
 export function renderRoman(ast: RomanNumeralAst): RomanRenderings {
   const base = ast.special ?? renderDegree(ast.degree, ast.accidental, ast.case);
   const diminished = ast.special ? '' : ast.diminished ?? '';
-  const quality = ast.special ? '' : qualitySuffix(ast);
+  const rawQuality = ast.special ? '' : qualitySuffix(ast);
+  // Figured-bass notation carries the seventh/triad inversion information;
+  // avoid rendering a redundant `7` before `65` (for example `ii765`).
+  const quality = ast.figuredBass && (rawQuality === '7' || rawQuality === 'maj7')
+    ? (rawQuality === 'maj7' ? 'maj' : '')
+    : rawQuality;
   const alterations = ast.alterations.length ? `(${ast.alterations.join(',')})` : '';
   const omissions = ast.omissions.length ? `(${ast.omissions.map((entry) => entry.replace('omit', 'no')).join(',')})` : '';
   const appliedPrefix = ast.function === 'tritoneSubstitution' ? 'SubV' : ast.function === 'appliedLeadingTone' ? 'vii°7' : 'V';
   const applied = ast.appliedTarget ? `${appliedPrefix}/${ast.appliedTarget}` : '';
-  const analysis = applied || `${base}${diminished}${quality}${alterations}${omissions}${ast.borrowedFrom ? ` [${ast.borrowedFrom}]` : ''}`;
-  const pop = applied || `${base}${diminished}${quality}${alterations}`;
-  const classical = `${analysis}${ast.figuredBass ? ast.figuredBass : ''}`;
+  const figuredBass = ast.figuredBass ?? '';
+  const analysis = applied || `${base}${diminished}${quality}${alterations}${omissions}${figuredBass}${ast.borrowedFrom ? ` [${ast.borrowedFrom}]` : ''}`;
+  const pop = applied || `${base}${diminished}${quality}${alterations}${figuredBass}`;
+  const classical = analysis;
   return { analysis, pop, classical };
 }
 

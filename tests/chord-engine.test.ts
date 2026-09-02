@@ -26,6 +26,20 @@ describe('register-aware chord engine', () => {
     expect(analyzeChord(['C3', 'E3', 'G3', 'Bb3', 'A4']).primary?.name).toBe('C13(no9)');
   });
 
+  it('matches octave-doubled structures without discarding register evidence', () => {
+    const result = analyzeChord([58, 62, 68, 74]); // Bb2 D3 G#3 D4
+    expect(result.primary?.name).toBe('Bb7(no5)');
+    expect(result.primary?.intervalAnalysis.absoluteIntervals).toEqual([0, 4, 10, 16]);
+    expect(result.primary?.evidence.notes).toEqual([58, 62, 68, 74]);
+  });
+
+  it('returns a declared conflict candidate for dominant add11 clusters', () => {
+    const result = analyzeChord([67, 71, 72, 74, 77]); // G B C D F
+    expect(result.primary?.name).toBe('G7add11');
+    expect(result.primary?.evidence.match).toBe('conflict');
+    expect(result.primary?.evidence.conflictIntervals).toEqual([5]);
+  });
+
   it('returns an explicit ambiguous pitch-class analysis without extension claims', () => {
     const result = analyzePitchClasses([0, 2, 4, 7]);
     expect(result.inputMode).toBe('pitch-class');
