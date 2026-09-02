@@ -1261,6 +1261,17 @@ For any task that includes code or configuration changes, the agent MUST, after 
 
 This is the default behavior and does not require a separate user reminder. The agent MUST NOT add IDE files, temporary files, generated output, coverage, credentials, or unrelated user artifacts to the commit. If authentication, repository state, or another external blocker prevents the commit, push, or PR, the agent MUST report the exact blocker instead of silently stopping after local edits.
 
+## 25.2 Source Changes Require an npm Release
+
+Any change that modifies a file under `src/` MUST include a version update and npm release workflow. The agent MUST:
+
+1. choose the semver bump required by the change (`patch` for fixes, `minor` for compatible features, `major` for breaking changes);
+2. after the Pull Request is merged, update `package.json` and `package-lock.json` on the current `main` using `npm version`;
+3. push the version commit and `v*` tag according to `docs/COMMIT-WORKFLOW.md`, which triggers the npm publish workflow;
+4. verify the published version with `npm view @phishinqi/chordkit version`.
+
+The agent MUST NOT publish from a feature branch or silently omit the release because the source change appears internal. If npm authentication, Trusted Publishing, or merge state prevents release, the agent MUST report the exact blocker and the pending version-release step.
+
 ---
 
 # 26. Forbidden Operations
