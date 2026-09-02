@@ -36,4 +36,19 @@ describe('Harmony card sources', () => {
     expect(screen.getAllByText('[sus2]').length).toBeGreaterThan(0);
     expect(screen.getAllByText('[add4]').length).toBeGreaterThan(0);
   });
+
+  it('offers altered extensions and an Alt preset with conflict guards', () => {
+    render(<HarmonyLab locale="zh" midiTimeline={null} />);
+    expect(screen.getAllByText('#11').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('#13').length).toBeGreaterThan(0);
+    fireEvent.click(document.querySelector('.modifier-alt input')!);
+    const modifierRow = document.querySelectorAll('.choice-row')[2]!;
+    expect(modifierRow.querySelector('button:nth-child(8)')?.className).toContain('active');
+    expect(modifierRow.querySelector('button:nth-child(9)')?.className).toContain('active');
+    expect(modifierRow.querySelector('button:nth-child(10)')?.className).toContain('active');
+    expect(modifierRow.querySelector('button:nth-child(11)')?.className).toContain('active');
+    fireEvent.click(modifierRow.querySelector('button:nth-child(2)')!);
+    expect(screen.getAllByText('add9').length).toBeGreaterThan(0);
+    expect((modifierRow.querySelector('button:nth-child(5)') as HTMLButtonElement).disabled).toBe(true);
+  });
 });

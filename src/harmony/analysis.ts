@@ -1,6 +1,6 @@
 import { analyzeChord, analyzePitchClasses, canonicalNoteName, normalizePitchClass, pitchClassFromName, type ChordAnalysisResult, type RegisteredNoteInput } from '../core/chord';
 import { ChordInputError } from '../core/chord/types';
-import type { HarmonyAnalysis, HarmonyCandidate, HarmonyInput, HarmonyOptions, HarmonyProfile, KeyCandidate, ProgressionEvent, ProgressionInput, TonalContext, TonalMode } from './types';
+import type { HarmonyAnalysis, HarmonyCandidate, HarmonyInput, HarmonyOptions, HarmonyProfile, HarmonyProgressionEvent, KeyCandidate, ProgressionEvent, ProgressionInput, TonalContext, TonalMode } from './types';
 import { contextForPitchClass, createTonalContext, scalePitchClasses, TONAL_MODES } from './scale';
 import { parseChordSymbol } from './symbol';
 import { renderRoman, romanEvidence, romanForCandidate } from './roman';
@@ -134,7 +134,33 @@ export function inferKeys(input: readonly (HarmonyInput | ProgressionEvent)[], o
   }
   candidates.sort((left, right) => right.score - left.score || left.context.label.localeCompare(right.context.label));
   const best = candidates[0]?.score ?? 1;
-  return candidates.slice(0, options.maxKeyCandidates ?? 8).map((candidate) => ({ ...candidate, confidence: Number(Math.max(0, Math.min(1, candidate.score / Math.max(best, 0.0001))).toFixed(3)) }));
+  const runnerUp = candidates[1]?.score ?? best;
+  const margin = Math.max(0, best - runnerUp);
+  const confidence = Number(Math.min(1, 0.5 + (margin / Math.max(0.5, Math.abs(best))) * 2).toFixed(3));
+  return candidates.slice(0, options.maxKeyCandidates ?? 8).map((candidate, index) => ({
+    ...candidate,
+    confidence: index === 0 ? confidence : Number(Math.max(0, confidence - ((candidate.score === best ? 0 : (best - candidate.score) / Math.max(0.5, Math.abs(best))) * 0.5)).toFixed(3)),
+  }));
+}
+
+function unresolvedFunctionalCandidate(event: HarmonyProgressionEvent, next: HarmonyProgressionEvent | undefined, options: HarmonyOptions): HarmonyProgressionEvent {
+  const primary = event.analysis.primary;
+  const nextRoot = next?.analysis.input.primary?.rootPitchClass;
+  if (!primary || nextRoot === undefined) return event;
+  const target = primary.function === 'tritoneSubstitution'
+    ? normalizePitchClass(primary.chord.rootPitchClass - 1)
+    : primary.function === 'appliedDominant'
+      ? normalizePitchClass(primary.chord.rootPitchClass + 5)
+      : primary.function === 'appliedLeadingTone'
+        ? normalizePitchClass(primary.chord.rootPitchClass + 1)
+        : null;
+  if (target === null || target === nextRoot) return event;
+  const roman = { ...primary.roman, function: 'chromatic' as const, appliedTarget: undefined, borrowedFrom: undefined };
+  const renderings = renderRoman(roman);
+  const tonalScore = Number(resolvedWeights(options).chromaticPenalty.toFixed(3));
+  const downgraded = { ...primary, roman, renderings, tonalScore, combinedScore: Number((primary.chord.score * tonalScore).toFixed(3)), function: 'chromatic' as const, evidence: [...primary.evidence, `no following resolution to pitch class ${target}`] };
+  const candidates = [downgraded, ...event.analysis.candidates.filter((candidate) => candidate !== primary)];
+  return { ...event, analysis: { ...event.analysis, primary: downgraded, candidates, alternatives: candidates.slice(1), evidence: downgraded.evidence } };
 }
 
 function contextKey(context: TonalContext): string { return `${context.tonicPitchClass}:${context.mode}`; }
@@ -199,21 +225,23 @@ export function analyzeProgression(input: ProgressionInput, options: HarmonyOpti
   const analyses = entries.map((entry) => entry.analysis);
   const keys = options.key ? [{ context: normalizedContext(options.key, 'manual'), score: 1, confidence: 1, evidence: ['Manual tonal context'] }] : inferKeys(analyses, options);
   const initialContext = keys[0]?.context ?? contextForPitchClass(0, 'major');
-  const contexts = options.key ? analyses.map(() => initialContext) : segmentedContexts(analyses, initialContext, options, keys);
+  const allowAutomaticSegmentation = !options.key && (keys[0]?.confidence ?? 0) >= 0.72;
+  const contexts = options.key ? analyses.map(() => initialContext) : allowAutomaticSegmentation ? segmentedContexts(analyses, initialContext, options, keys) : analyses.map(() => initialContext);
   const globalContext = contexts[0] ?? initialContext;
-  const events = entries.map(({ event, analysis }, index) => {
+  let events: HarmonyProgressionEvent[] = entries.map(({ event, analysis }, index) => {
     const override = options.overrides?.keyRanges?.find((range) => index >= range.startIndex && index <= range.endIndex);
     const localContext = override ? normalizedContext(override.context, 'override') : contexts[index]!;
     const harmony = analyzeHarmony(analysis, { ...options, key: { tonic: localContext.tonic, tonicPitchClass: localContext.tonicPitchClass, mode: localContext.mode } });
-    return { index, id: event.id!, start: event.start ?? null, end: event.end ?? null, analysis: harmony, localContext, modulation: false };
+    return { index, id: event.id!, label: event.label, start: event.start ?? null, end: event.end ?? null, analysis: harmony, localContext, modulation: false };
   });
+  events = events.map((event, index) => unresolvedFunctionalCandidate(event, events[index + 1], options));
   events.forEach((event, index) => {
     event.modulation = index > 0 && (event.localContext.tonicPitchClass !== events[index - 1]!.localContext.tonicPitchClass || event.localContext.mode !== events[index - 1]!.localContext.mode);
   });
   const tonalSegments = events.reduce<import('./types').TonalSegment[]>((segments, event) => {
     const previous = segments.at(-1);
     if (previous && previous.context.tonicPitchClass === event.localContext.tonicPitchClass && previous.context.mode === event.localContext.mode) previous.endIndex = event.index;
-    else segments.push({ startIndex: event.index, endIndex: event.index, context: event.localContext, source: event.localContext.source, confidence: event.analysis.keyCandidates.find((candidate) => candidate.context.label === event.localContext.label)?.confidence ?? 1, reason: event.modulation ? 'local tonal evidence across adjacent events' : event.localContext.source === 'override' ? 'manual key-range override' : 'global tonal context' });
+    else segments.push({ startIndex: event.index, endIndex: event.index, context: event.localContext, source: event.localContext.source, confidence: event.localContext.source === 'automatic' ? keys.find((candidate) => candidate.context.label === event.localContext.label)?.confidence ?? 0.5 : 1, reason: event.modulation ? 'local tonal evidence across adjacent events' : event.localContext.source === 'override' ? 'manual key-range override' : 'global tonal context' });
     return segments;
   }, []);
   return { globalContext, keyCandidates: keys, events, tonalSegments };

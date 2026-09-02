@@ -112,6 +112,9 @@ footer { display:flex; justify-content:space-between; gap:16px; padding:18px 28p
 .choice-row > div { display: flex; flex-wrap: wrap; gap: 5px; }
 .choice-row button { border: 1px solid #151411; padding: 6px 8px; background: #f4efe3; font: 10px 'DM Mono', monospace; cursor: pointer; }
 .choice-row button.active { color: #f4efe3; background: #151411; }
+.choice-row button:disabled { opacity: .35; cursor: not-allowed; }
+.modifier-alt { display: inline-flex; align-items: center; gap: 6px; margin: 8px 0 4px 90px; font: 10px 'DM Mono', monospace; }
+.modifier-alt input { accent-color: #151411; }
 .builder-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 12px; border-top: 1px solid #151411; }
 .builder-preview span { color: #605c54; font: 10px 'DM Mono', monospace; }
 .builder-preview strong { flex: 1; font: 600 15px 'DM Mono', monospace; }

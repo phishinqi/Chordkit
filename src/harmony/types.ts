@@ -94,6 +94,7 @@ export interface ProgressionEvent {
 export interface HarmonyProgressionEvent {
   index: number;
   id: string;
+  label?: string;
   start: number | null;
   end: number | null;
   analysis: HarmonyAnalysis;

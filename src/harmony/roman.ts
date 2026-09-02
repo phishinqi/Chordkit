@@ -119,7 +119,8 @@ export function renderRoman(ast: RomanNumeralAst): RomanRenderings {
   const quality = ast.figuredBass && (rawQuality === '7' || rawQuality === 'maj7')
     ? (rawQuality === 'maj7' ? 'maj' : '')
     : rawQuality;
-  const alterations = ast.alterations.length ? `(${ast.alterations.join(',')})` : '';
+  const explicitAlterations = ast.alterations.filter((alteration) => !ast.quality.includes(alteration));
+  const alterations = explicitAlterations.length ? `(${explicitAlterations.join(',')})` : '';
   const omissions = ast.omissions.length ? `(${ast.omissions.map((entry) => entry.replace('omit', 'no')).join(',')})` : '';
   const appliedPrefix = ast.function === 'tritoneSubstitution' ? 'SubV' : ast.function === 'appliedLeadingTone' ? 'vii°7' : 'V';
   const applied = ast.appliedTarget ? `${appliedPrefix}/${ast.appliedTarget}` : '';

@@ -4,13 +4,13 @@ import { analyzeMidi, type ChordTimeline } from '@chordkit/midi';
 import type { ChordCandidate } from '@chordkit/core';
 import * as harmony from '@chordkit/harmony';
 import { JsonPanel } from './Panels';
-import { cardFromCandidate, cardIntervals, cardLabel, cardNotes, cardsForPreset, createCard, PRESETS, type CardModifier, type CardQuality, type HarmonyCardModel } from '../harmonyCards';
+import { ALT_MODIFIERS, cardFromCandidate, cardIntervals, cardLabel, cardNotes, cardSymbol, cardsForPreset, createCard, modifierConflicts, modifierIsDisabled, PRESETS, type CardModifier, type CardQuality, type HarmonyCardModel } from '../harmonyCards';
 import { t, type Locale } from '../i18n';
 
 const TONICS = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
 const MODES: harmony.TonalMode[] = ['major', 'naturalMinor', 'harmonicMinor', 'melodicMinor', 'dorian', 'phrygian', 'lydian', 'mixolydian', 'locrian'];
 const QUALITIES: CardQuality[] = ['major', 'minor', 'dim', 'aug', 'sus2', 'sus4', 'power', '7', 'maj7', 'm7', 'm7b5'];
-const MODIFIERS: CardModifier[] = ['6', '9', '11', '13', 'add9', 'add11', 'add4', 'b5', '#5', 'b9', '#9', '#11', 'b13', 'omit3', 'omit5'];
+const MODIFIERS: CardModifier[] = ['6', '9', '11', '13', 'add9', 'add11', 'add4', 'b5', '#5', 'b9', '#9', '#11', 'b13', '#13', 'omit3', 'omit5'];
 type Source = 'cards' | 'upload' | 'midi-lab';
 type Safe<T> = { value: T | null; error: string };
 
@@ -46,7 +46,7 @@ export function HarmonyLab({ locale, midiTimeline, incomingCandidate }: { locale
 
   const optionResult = useMemo(() => safely(() => ({ auto, key: auto ? undefined : { tonic, mode }, profile, grammar, renderer, overrides: JSON.parse(overridesText) as harmony.HarmonyOverrides } satisfies harmony.HarmonyOptions)), [auto, tonic, mode, profile, grammar, renderer, overridesText]);
   const options = optionResult.value ?? { auto, key: auto ? undefined : { tonic, mode }, profile, grammar, renderer } satisfies harmony.HarmonyOptions;
-  const cardResult = useMemo(() => safely(() => harmony.analyzeProgression(cards.map(cardNotes), options)), [cards, options]);
+  const cardResult = useMemo(() => safely(() => harmony.analyzeProgression(cards.map((card) => ({ id: card.id, label: cardLabel(card), input: cardSymbol(card) })), options)), [cards, options]);
   const builderResult = useMemo(() => safely(() => harmony.analyzeHarmony(cardNotes(builder), options)), [builder, options]);
   const activeTimeline = source === 'upload' ? uploadedTimeline : source === 'midi-lab' ? midiTimeline : null;
   const timelineResult = useMemo(() => activeTimeline ? safely(() => harmony.analyzeHarmonicTimeline(activeTimeline, options)) : { value: null, error: '' }, [activeTimeline, options]);
@@ -57,9 +57,14 @@ export function HarmonyLab({ locale, midiTimeline, incomingCandidate }: { locale
   const loadPreset = (id: string) => { setPresetId(id); setCards(cardsForPreset(id)); setBuilder(createCard()); setEditingId(null); setSelectedSegment(0); };
   const moveCard = (id: string, direction: -1 | 1) => setCards((current) => { const index = current.findIndex((card) => card.id === id); const next = index + direction; if (index < 0 || next < 0 || next >= current.length) return current; const copy = [...current]; [copy[index], copy[next]] = [copy[next]!, copy[index]!]; return copy; });
   const removeCard = (id: string) => { setCards((current) => current.filter((card) => card.id !== id)); if (editingId === id) { setBuilder(createCard()); setEditingId(null); } };
-  const saveBuilder = () => { const next = { ...builder, modifiers: [...builder.modifiers] }; setCards((current) => editingId ? current.map((card) => card.id === editingId ? next : card) : [...current, next]); if (!editingId) { const fresh = createCard(); setBuilder(fresh); } };
+  const saveBuilder = () => { if (modifierConflicts(builder.modifiers, builder.alt).length) return; const next = { ...builder, modifiers: [...builder.modifiers] }; setCards((current) => editingId ? current.map((card) => card.id === editingId ? next : card) : [...current, next]); if (!editingId) { const fresh = createCard(); setBuilder(fresh); } };
   const editCard = (card: HarmonyCardModel) => { setBuilder({ ...card, modifiers: [...card.modifiers] }); setEditingId(card.id); };
-  const toggleModifier = (modifier: CardModifier) => setBuilder((current) => ({ ...current, modifiers: current.modifiers.includes(modifier) ? current.modifiers.filter((value) => value !== modifier) : [...current.modifiers, modifier] }));
+  const toggleModifier = (modifier: CardModifier) => setBuilder((current) => {
+    if (current.modifiers.includes(modifier)) return { ...current, modifiers: current.modifiers.filter((value) => value !== modifier), alt: false };
+    if (modifierIsDisabled(current.modifiers, modifier, current.alt)) return current;
+    return { ...current, modifiers: [...current.modifiers, modifier], alt: false };
+  });
+  const toggleAlt = (enabled: boolean) => setBuilder((current) => ({ ...current, alt: enabled, modifiers: enabled ? [...new Set([...current.modifiers.filter((modifier) => !['b9', '#9', 'b5', '#5'].includes(modifier)), ...ALT_MODIFIERS])] : current.modifiers.filter((modifier) => !ALT_MODIFIERS.includes(modifier)) }));
   const uploadMidi = async (file: File) => {
     setUploadError('');
     try {
@@ -89,9 +94,11 @@ export function HarmonyLab({ locale, midiTimeline, incomingCandidate }: { locale
         <div className="card-head"><span>{editingId ? tx.updateChord : tx.addChord}</span><small>{builderResult.value?.primary?.chord.evidence.match === 'exact' ? tx.exactTemplate : tx.experimentalChord}</small></div>
         <CardChoice label="Root" values={TONICS} selected={builder.root} onSelect={(root) => setBuilder((current) => ({ ...current, root }))} />
         <CardChoice label="Quality" values={QUALITIES} selected={builder.quality} onSelect={(quality) => setBuilder((current) => ({ ...current, quality: quality as CardQuality }))} />
-        <CardChoice label="Modifiers" values={MODIFIERS} selected={builder.modifiers} multiple onSelect={(modifier) => toggleModifier(modifier as CardModifier)} />
+        <CardChoice label="Modifiers" values={MODIFIERS} selected={builder.modifiers} disabled={(modifier) => modifierIsDisabled(builder.modifiers, modifier as CardModifier, builder.alt)} multiple onSelect={(modifier) => toggleModifier(modifier as CardModifier)} />
+        <label className="modifier-alt"><input type="checkbox" checked={builder.alt ?? false} onChange={(event) => toggleAlt(event.target.checked)} />Alt</label>
         <CardChoice label="Bass" values={['—', ...TONICS]} selected={builder.bass ?? '—'} onSelect={(bass) => setBuilder((current) => ({ ...current, bass: bass === '—' ? null : bass }))} />
         <div className="builder-preview"><span>{tx.intervals}: {cardIntervals(builder).join(', ')}</span><strong>{cardLabel(builder)}</strong><button className="primary" onClick={saveBuilder}><Plus size={15}/>{editingId ? tx.updateChord : tx.addChord}</button></div>
+        {modifierConflicts(builder.modifiers, builder.alt).length > 0 && <p className="error">Invalid modifier combination: {modifierConflicts(builder.modifiers, builder.alt).map(([left, right]) => `${left} + ${right}`).join(', ')}</p>}
         {builderResult.error && <p className="error">{tx.error}: {builderResult.error}</p>}
       </section>
     </>}
@@ -110,9 +117,9 @@ export function HarmonyLab({ locale, midiTimeline, incomingCandidate }: { locale
   </section>;
 }
 
-function CardChoice({ label, values, selected, multiple = false, onSelect }: { label: string; values: readonly string[]; selected: string | readonly string[]; multiple?: boolean; onSelect: (value: string) => void }) {
+function CardChoice({ label, values, selected, disabled, multiple = false, onSelect }: { label: string; values: readonly string[]; selected: string | readonly string[]; disabled?: (value: string) => boolean; multiple?: boolean; onSelect: (value: string) => void }) {
   const selectedValues = Array.isArray(selected) ? selected : [selected];
-  return <div className="choice-row"><span>{label}</span><div>{values.map((value) => <button className={selectedValues.includes(value) ? 'active' : ''} key={value} onClick={() => onSelect(value)}>{value}</button>)}</div></div>;
+  return <div className="choice-row"><span>{label}</span><div>{values.map((value) => <button disabled={disabled?.(value) ?? false} className={selectedValues.includes(value) ? 'active' : ''} key={value} onClick={() => onSelect(value)}>{value}</button>)}</div></div>;
 }
 
 function HarmonySummary({ locale, progression, renderer }: { locale: Locale; progression: ReturnType<typeof harmony.analyzeProgression>; renderer: harmony.RomanRenderer }) {
