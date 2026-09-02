@@ -30,7 +30,7 @@ function defaultEvaluation(context: ScoringContext): ScoreEvaluation {
   const { candidate, expectedToneCount, observedToneCount, rootPreferred, sameNoteSpecial, weights } = context;
   const matchValue = candidate.evidence.match === 'exact' ? weights.exactMatch
     : candidate.evidence.match === 'pitch-class' ? weights.pitchClassMatch
-      : candidate.evidence.match === 'omission' ? weights.omissionMatch : weights.polychordMatch;
+      : candidate.evidence.match === 'omission' ? weights.omissionMatch : candidate.evidence.match === 'conflict' ? weights.pitchClassMatch * 0.9 : weights.polychordMatch;
   const completeness = expectedToneCount > 0 ? Math.min(1, observedToneCount / expectedToneCount) : 0;
   const components = [
     component('match', 'Template match', matchValue, `${candidate.evidence.match} structural match`),

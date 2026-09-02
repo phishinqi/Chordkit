@@ -22,13 +22,14 @@ export interface ScoreBreakdown {
 
 export interface ChordEvidence {
   templateId?: string;
-  match: 'exact' | 'pitch-class' | 'omission' | 'polychord';
+  match: 'exact' | 'pitch-class' | 'omission' | 'conflict' | 'polychord';
   inversion: number;
   voicing: 'closed' | 'open' | 'spread';
   notes: number[];
   notationKind?: ChordNotationKind;
   upperStructure?: string;
   lowerStructure?: string;
+  conflictIntervals?: number[];
 }
 
 export interface ChordCandidate {

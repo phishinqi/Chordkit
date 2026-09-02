@@ -9,6 +9,7 @@ export interface ChordTemplate {
   extensions?: number[];
   alterations?: string[];
   legacyAliases?: string[];
+  avoidIntervals?: number[];
   registerRequirement?: RegisterRequirement;
 }
 

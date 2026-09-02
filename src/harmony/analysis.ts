@@ -54,7 +54,7 @@ export function analyzeHarmony(input: HarmonyInput, options: HarmonyOptions = {}
   if (!context) return { input: analysis, context: null, keyCandidates, primary: null, alternatives: [], candidates: [], unknown: true, evidence: ['No tonal context could be inferred'] };
   const weights = resolvedWeights(options);
   const candidates = analysis.candidates.map((chord) => {
-    const roman = romanForCandidate(chord, context);
+    const roman = romanForCandidate(chord, context, options.profile);
     const functionFit = tonalFit({ chord, roman, renderings: renderRoman(roman), tonalScore: 0, combinedScore: 0, function: roman.function, evidence: [] }, weights);
     const tonalScore = Number(Math.min(1.25, functionFit).toFixed(3));
     const combinedScore = Number((chord.score * tonalScore).toFixed(3));
@@ -83,9 +83,9 @@ function cadenceBonus(analyses: readonly ChordAnalysisResult[], context: TonalCo
   return bonus;
 }
 
-function chordFit(analysis: ChordAnalysisResult, context: TonalContext, weights: ReturnType<typeof resolvedWeights>): number {
+function chordFit(analysis: ChordAnalysisResult, context: TonalContext, weights: ReturnType<typeof resolvedWeights>, profile: HarmonyProfile = 'general'): number {
   const perChord = analysis.candidates.map((chord) => {
-    const roman = romanForCandidate(chord, context);
+    const roman = romanForCandidate(chord, context, profile);
     return chord.score * tonalFit({ chord, roman, renderings: renderRoman(roman), tonalScore: 0, combinedScore: 0, function: roman.function, evidence: [] }, weights);
   });
   const root = analysis.primary?.rootPitchClass;
@@ -125,7 +125,7 @@ export function inferKeys(input: readonly (HarmonyInput | ProgressionEvent)[], o
   const candidates: KeyCandidate[] = [];
   for (let tonic = 0; tonic < 12; tonic += 1) for (const mode of modes) {
     const context = contextForPitchClass(tonic, mode, 'automatic');
-    const fit = analyses.reduce((total, analysis) => total + chordFit(analysis, context, weights), 0);
+    const fit = analyses.reduce((total, analysis) => total + chordFit(analysis, context, weights, options.profile), 0);
     const cadence = cadenceBonus(analyses, context, weights);
     const anchor = contextAnchor(analyses, context);
     const score = Number((fit / Math.max(1, analyses.length) + cadence + anchor + MODE_PRIOR[mode]).toFixed(4));
@@ -147,12 +147,12 @@ function segmentedContexts(analyses: readonly ChordAnalysisResult[], global: Ton
   const pool = new Map<string, TonalContext>();
   [global, ...globalKeys.map((entry) => entry.context)].forEach((context) => pool.set(contextKey(context), context));
   analyses.forEach((analysis) => all
-    .map((context) => ({ context, score: chordFit(analysis, context, weights) }))
+    .map((context) => ({ context, score: chordFit(analysis, context, weights, options.profile) }))
     .sort((left, right) => right.score - left.score)
     .slice(0, 4)
     .forEach((entry) => pool.set(contextKey(entry.context), entry.context)));
   const contexts = [...pool.values()];
-  const fit = contexts.map((context) => analyses.map((analysis) => chordFit(analysis, context, weights)));
+  const fit = contexts.map((context) => analyses.map((analysis) => chordFit(analysis, context, weights, options.profile)));
   const prefix = fit.map((values) => {
     const sums = [0];
     values.forEach((value, index) => { sums[index + 1] = sums[index]! + value; });

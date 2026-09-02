@@ -1,5 +1,5 @@
 import { detectDominantFeatures, detectPolychord, harmonicRelations } from '../advanced';
-import { detectOmissions, inversionIndex, analyzeVoicing, matchPitchClassTemplates, matchTemplates, rootCandidates } from '../analysis';
+import { detectOmissions, foldDuplicatePitchClasses, inversionIndex, analyzeVoicing, matchPitchClassTemplates, matchTemplates, rootCandidates } from '../analysis';
 import { calculateIntervals, calculatePitchClassIntervals, hasCompoundInterval, hasInterval, hasSimpleInterval } from '../intervals';
 import { enharmonicAliases, formatChord } from '../naming';
 import { normalizePitchClass, pitchClassFromName } from '../normalize';
@@ -64,7 +64,7 @@ function candidateFromTemplate(
     alterations: [...new Set([...(template.alterations ?? []), ...features.alterations])],
     aliases: [...new Set([...enharmonicAliases(root.pitchClass, template.quality, bassName, options.spelling), ...addLegacyAliases(root.pitchClass, bassPitchClass, template, options, root.source, bass?.source)])],
     intervalAnalysis: analysis,
-    evidence: { templateId: template.id, match, inversion, voicing, notes, notationKind: bassName ? 'slash' : 'chord' },
+    evidence: { templateId: template.id, match, inversion, voicing, notes, notationKind: bassName ? 'slash' : 'chord', conflictIntervals: template.avoidIntervals },
   };
   return score(candidate, template.intervals.length, options);
 }
@@ -122,11 +122,16 @@ export function analyzeRegisteredNotes(notes: readonly NormalizedNote[], options
     const analysis = calculateIntervals(root, notes);
     const inversion = inversionIndex(root.pitchClass, notes);
     const voicing = analyzeVoicing(notes);
-    for (const template of matchTemplates(analysis.absoluteIntervals, templates)) {
-      candidates.push(candidateFromTemplate(root, bass, analysis, template, 'exact', inversion, voicing, notes.map((note) => note.midi), options));
+    const matchingIntervals = foldDuplicatePitchClasses(analysis.absoluteIntervals);
+    for (const template of matchTemplates(matchingIntervals, templates, analysis.absoluteIntervals)) {
+      // Conflict/avoid-note realizations are intentionally conservative: when
+      // the root is not in the bass, leave room for an independently recognized
+      // polychord or slash interpretation instead of claiming the cluster.
+      if (template.avoidIntervals?.length && root.pitchClass !== bass.pitchClass) continue;
+      candidates.push(candidateFromTemplate(root, bass, analysis, template, template.avoidIntervals?.length ? 'conflict' : 'exact', inversion, voicing, notes.map((note) => note.midi), options));
     }
     if (options.mode !== 'strict') {
-      for (const omission of detectOmissions(analysis.absoluteIntervals, templates)) {
+      for (const omission of detectOmissions(matchingIntervals, templates)) {
         candidates.push(candidateFromTemplate(root, bass, analysis, omission.template, 'omission', inversion, voicing, notes.map((note) => note.midi), options, omission.omissions));
       }
       const altered = alteredDominantCandidate(root, bass, analysis, inversion, voicing, notes, options);
