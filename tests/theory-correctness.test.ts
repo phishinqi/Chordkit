@@ -42,6 +42,23 @@ describe('theory-correct recognition contracts', () => {
     expect(result.primary?.evidence).toMatchObject({ notationKind: 'polychord', upperStructure: 'D', lowerStructure: 'C5' });
   });
 
+  it('keeps polychord evidence rooted in the upper candidate and reports the sounding bass', () => {
+    const result = analyzeChord(['E3', 'F#3', 'A3', 'D4', 'F4', 'A4', 'B4'], { explain: true, scoring: () => ({ rawScore: 74 }) });
+    const candidate = result.primary;
+    expect(candidate?.evidence.match).toBe('polychord');
+    expect(candidate?.root).toBe('B');
+    expect(candidate?.intervalAnalysis.rootPitchClass).toBe(candidate?.rootPitchClass);
+    expect(candidate?.intervalAnalysis.rootMidi).toBe(candidate?.rootMidi);
+    expect(candidate?.bass).toBe('E');
+    expect(candidate?.scoreBreakdown?.components.map((component) => component.id)).not.toContain('bass-root');
+    expect(candidate?.scoreBreakdown?.bassEvidence).toContain('not applicable');
+
+    const defaultResult = analyzeChord(['E3', 'F#3', 'A3', 'D4', 'F4', 'A4', 'B4'], { explain: true });
+    const defaultPolychord = defaultResult.candidates.find((item) => item.evidence.match === 'polychord');
+    expect(defaultPolychord?.scoreBreakdown?.components.map((component) => component.id)).not.toContain('bass-root');
+    expect(defaultPolychord?.scoreBreakdown?.bassEvidence).toContain('not applicable');
+  });
+
   it('supports validated custom spelling strategies and key-aware flat preference', () => {
     const result = analyzeChord(['C#3', 'E3', 'G#3'], {
       spelling: (context) => ({ 1: 'C#', 4: 'E', 8: 'G#' }[context.pitchClass] ?? 'C'),

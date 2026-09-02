@@ -28,6 +28,7 @@ function component(id: string, label: string, value: number, rationale: string):
 
 function defaultEvaluation(context: ScoringContext): ScoreEvaluation {
   const { candidate, expectedToneCount, observedToneCount, rootPreferred, sameNoteSpecial, weights } = context;
+  const isPolychord = candidate.evidence.match === 'polychord';
   const matchValue = candidate.evidence.match === 'exact' ? weights.exactMatch
     : candidate.evidence.match === 'pitch-class' ? weights.pitchClassMatch
       : candidate.evidence.match === 'omission' ? weights.omissionMatch : candidate.evidence.match === 'conflict' ? weights.pitchClassMatch * 0.9 : weights.polychordMatch;
@@ -37,11 +38,13 @@ function defaultEvaluation(context: ScoringContext): ScoreEvaluation {
     component('root', 'Root validity', weights.rootPresent, 'candidate root is present in the observed pitch set'),
     component('completeness', 'Template completeness', weights.completeTemplate * completeness, `${observedToneCount}/${expectedToneCount} expected tones observed`),
   ];
-  if (candidate.evidence.inversion === 0) components.push(component('bass-root', 'Bass/root alignment', weights.bassMatchesRoot, 'bass pitch class matches root'));
-  else components.push(component('inversion', 'Inversion penalty', -weights.inversionPenalty * candidate.evidence.inversion, `inversion index ${candidate.evidence.inversion}`));
+  if (!isPolychord) {
+    if (candidate.evidence.inversion === 0) components.push(component('bass-root', 'Bass/root alignment', weights.bassMatchesRoot, 'bass pitch class matches root'));
+    else components.push(component('inversion', 'Inversion penalty', -weights.inversionPenalty * candidate.evidence.inversion, `inversion index ${candidate.evidence.inversion}`));
+  }
   if (candidate.omissions.length) components.push(component('omissions', 'Omission penalty', -weights.omissionPenalty * candidate.omissions.length, candidate.omissions.join(', ')));
   if (candidate.evidence.match === 'polychord') components.push(component('structural-ambiguity', 'Compound-structure penalty', -weights.ambiguityPenalty, 'two independently recognized structures'));
-  if (rootPreferred && candidate.evidence.inversion === 0) components.push(component('root-preference', 'Root preference', 4, 'caller requested bass-root preference'));
+  if (rootPreferred && !isPolychord && candidate.evidence.inversion === 0) components.push(component('root-preference', 'Root preference', 4, 'caller requested bass-root preference'));
   if (sameNoteSpecial && candidate.evidence.match === 'exact') components.push(component('exact-set', 'Exact-set preference', 3, 'caller requested exact-set preference'));
   return { rawScore: components.reduce((total, entry) => total + entry.value, 0), components };
 }
@@ -71,7 +74,9 @@ export function scoreCandidate(
       components,
       templateEvidence: candidate.evidence.templateId ?? candidate.evidence.match,
       rootEvidence: `root ${candidate.root} is evaluated independently from bass ${candidate.bass ?? candidate.root}`,
-      bassEvidence: candidate.evidence.inversion === 0 ? 'bass matches root' : `inversion index ${candidate.evidence.inversion}`,
+      bassEvidence: candidate.evidence.match === 'polychord'
+        ? 'compound structure; bass/root alignment is not applicable'
+        : candidate.evidence.inversion === 0 ? 'bass matches root' : `inversion index ${candidate.evidence.inversion}`,
     },
   };
 }

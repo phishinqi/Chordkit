@@ -20,8 +20,8 @@ export function rankCandidates(candidates: readonly ChordCandidate[], options: R
       if (b.evidence.match === 'polychord') return 1;
     }
     if (options.originalFirst) {
-      const aOriginal = a.evidence.inversion === 0 && a.score >= originalFirstRatio;
-      const bOriginal = b.evidence.inversion === 0 && b.score >= originalFirstRatio;
+      const aOriginal = a.evidence.match !== 'polychord' && a.evidence.inversion === 0 && a.score >= originalFirstRatio;
+      const bOriginal = b.evidence.match !== 'polychord' && b.evidence.inversion === 0 && b.score >= originalFirstRatio;
       if (aOriginal !== bOriginal) return aOriginal ? -1 : 1;
     }
     return b.score - a.score || a.complexity - b.complexity || a.name.localeCompare(b.name);

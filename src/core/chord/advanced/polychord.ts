@@ -38,13 +38,17 @@ export function detectPolychord(notes: readonly NormalizedNote[], recognize: Str
     if (!lower || !upper || lower.score < 0.6 || upper.score < 0.6) continue;
     const upperStructure = primaryName(upper);
     const lowerStructure = primaryName(lower);
-    const analysis = calculateIntervals(upperNotes[0]!, upperNotes);
+    const upperRootNote = upper.rootMidi === null
+      ? upperNotes[0]!
+      : upperNotes.find((note) => note.midi === upper.rootMidi) ?? upperNotes[0]!;
+    const analysis = calculateIntervals(upperRootNote, upperNotes);
+    const bassName = canonicalNoteName(notes[0]!.pitchClass);
     return {
       root: upper.root,
       rootPitchClass: upper.rootPitchClass,
       rootMidi: upper.rootMidi,
       quality: upper.quality,
-      bass: lower.root,
+      bass: bassName,
       name: `${upperStructure} | ${lowerStructure}`,
       score: 0,
       complexity: upper.complexity + lower.complexity + 1,
