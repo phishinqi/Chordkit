@@ -1,4 +1,4 @@
-import { analyzeChord, canonicalNoteName, normalizePitchClass, pitchClassFromName, type ChordAnalysisResult } from '../core/chord';
+import { analyzeChord, canonicalNoteName, normalizePitchClass, pitchClassFromName, type ChordAnalysisResult, type ChordTemplate } from '../core/chord';
 import { ChordInputError } from '../core/chord/types';
 import type { ParsedChordSymbol, SymbolGrammar } from './types';
 
@@ -70,17 +70,35 @@ export function parseChordSymbol(symbol: string, grammar: SymbolGrammar = 'stand
     if (!upperText || !lowerText) throw new ChordInputError(`Invalid polychord symbol: ${symbol}`);
     const upper = parseChordSymbol(upperText, grammar);
     const lower = parseChordSymbol(lowerText, grammar);
+    if (upper.quality === 'major' && upper.intervals.length === 3 && /^[A-Ga-g][#b]?$/.test(lowerText)) {
+      const canonical = parseChordSymbol(`${lower.root}9sus4(no5)`, grammar);
+      return { ...canonical, symbol };
+    }
     const notes = [...lower.notes.map((note) => note - 12), ...upper.notes];
     return { symbol, root: lower.root, rootPitchClass: lower.rootPitchClass, bass: lower.bass, bassPitchClass: lower.bassPitchClass, quality: `${upper.symbol} | ${lower.symbol}`, intervals: [], notes: [...new Set(notes)].sort((left, right) => left - right), analysis: analyzeChord(notes, { explain: true, polyChordFirst: true, spelling: { preserveSource: true, key: lower.root } }) };
   }
   const { root, body, bass } = rootAndBody(symbol);
+  if (bass && !body.trim() && normalizePitchClass(pitchClassFromName(root) - pitchClassFromName(bass)) === 10) {
+    const canonical = parseChordSymbol(`${bass}9sus4(no5)`, grammar);
+    return { ...canonical, symbol };
+  }
   const rootPitchClass = pitchClassFromName(root);
   const parsed = qualityIntervals(body, grammar);
   const base = 60 + rootPitchClass;
   const notes = parsed.intervals.map((interval) => base + interval);
   const bassPitchClass = bass ? pitchClassFromName(bass) : null;
   if (bassPitchClass !== null && bassPitchClass !== rootPitchClass) notes.push(48 + bassPitchClass);
-  const analysis = analyzeChord(notes, { explain: true, spelling: { preserveSource: true, key: root } });
+  const baseOptions = { explain: true, spelling: { preserveSource: true, key: root } } as const;
+  const needsSymbolicTemplate = /(?:#|b)(?:5|9|11|13)/i.test(body) || /(?:maj9|maj11|maj13|m9|m11|m13|sus4.*(?:no5|omit5))/i.test(body);
+  const symbolicQuality = body.replace(/\s+/g, '');
+  const symbolicTemplate: ChordTemplate = {
+    id: `symbol-${root}-${symbolicQuality || parsed.quality}`.replace(/[^A-Za-z0-9_-]/g, '_'),
+    quality: symbolicQuality || parsed.quality,
+    intervals: parsed.intervals,
+    family: 'custom',
+    registerRequirement: 'any',
+  };
+  const analysis = analyzeChord(notes, needsSymbolicTemplate ? { ...baseOptions, originalFirst: true, customTemplates: [symbolicTemplate] } : baseOptions);
   return { symbol, root, rootPitchClass, bass, bassPitchClass, quality: parsed.quality, intervals: parsed.intervals, notes: [...new Set(notes)].sort((left, right) => left - right), analysis };
 }
 

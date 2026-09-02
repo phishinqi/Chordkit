@@ -6,6 +6,7 @@ describe('Harmony analysis', () => {
   it('parses common and permissive chord symbols into registered-note analysis', () => {
     expect(parseChordSymbol('Dm7').analysis.primary?.name).toBe('Dm7');
     expect(parseChordSymbol('Cmaj9/E').bass).toBe('E');
+    expect(parseChordSymbol('C/E').analysis.primary?.name).toBe('C/E');
     expect(parseChordSymbol('CΔ7', 'permissive').analysis.primary?.name).toBe('Cmaj7');
     expect(parseChordSymbol('C5').analysis.primary?.name).toBe('C5');
     expect(parseChordSymbol('D | C5').analysis.primary?.evidence.notationKind).toBe('polychord');
@@ -81,6 +82,20 @@ describe('Harmony analysis', () => {
     const analyzed = analyzeHarmonicTimeline({ ...timeline, segments: timeline.windows.map((window) => ({ startTick: window.startTick, endTick: window.endTick, startMs: 0, endMs: 0, activeNotes: window.activeNotes, onsets: window.onsets, analysis: analyzeChord(window.activeNotes.map((note) => note.midi), { explain: true }), boundaryReasons: window.boundaryReasons, stats: { noteCount: window.activeNotes.length, uniqueMidiCount: new Set(window.activeNotes.map((note) => note.midi)).size, averageVelocity: 100, durationTicks: window.endTick - window.startTick, durationMs: 0 }, scope: 'global' as const, scopeKey: null, diagnostics: window.diagnostics })) }, { key: { tonic: 'C', mode: 'major' } });
     expect(analyzed.segments.length).toBeGreaterThan(0);
     expect(analyzed.voiceLeading.length).toBeGreaterThan(0);
+  });
+
+  it('keeps modern extended and slash-equivalent card semantics across a progression', () => {
+    const symbols = ['Cm9', 'Db13(#11)', 'C9sus4(no5)', 'Gb9sus4(no5)', 'Bmaj9(#11)'];
+    const progression = analyzeProgression(symbols, { profile: 'jazz' });
+    expect(progression.events.map((event) => event.analysis.input.primary?.name)).toEqual([
+      'Cm9', 'Db13(#11)', 'C9sus4(no5)', 'Gb9sus4(no5)', 'Bmaj9(#11)',
+    ]);
+    expect(progression.events[3]?.analysis.primary?.renderings.analysis).not.toBe('SubV/III');
+    expect(progression.events[1]?.analysis.primary?.renderings.analysis).not.toContain('#11)(#11)');
+    expect(progression.tonalSegments.length).toBe(1);
+    expect(progression.keyCandidates[0]?.confidence).toBeLessThan(0.8);
+    expect(parseChordSymbol('Bb/C').analysis.primary?.name).toBe('C9sus4(no5)');
+    expect(parseChordSymbol('E/Gb').analysis.primary?.name).toBe('Gb9sus4(no5)');
   });
 });
 
