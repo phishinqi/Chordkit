@@ -109,12 +109,14 @@ footer { display:flex; justify-content:space-between; gap:16px; padding:18px 28p
 .chord-builder { display: grid; gap: 14px; }
 .choice-row { display: grid; grid-template-columns: 90px 1fr; gap: 10px; align-items: start; }
 .choice-row > span { padding-top: 7px; color: #605c54; font: 10px 'DM Mono', monospace; }
-.choice-row > div { display: flex; flex-wrap: wrap; gap: 5px; }
+.choice-options { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.choice-buttons { display: flex; flex-wrap: wrap; gap: 5px; }
 .choice-row button { border: 1px solid #151411; padding: 6px 8px; background: #f4efe3; font: 10px 'DM Mono', monospace; cursor: pointer; }
 .choice-row button.active { color: #f4efe3; background: #151411; }
 .choice-row button:disabled { opacity: .35; cursor: not-allowed; }
-.modifier-alt { display: inline-flex; align-items: center; gap: 6px; margin: 8px 0 4px 90px; font: 10px 'DM Mono', monospace; }
-.modifier-alt input { accent-color: #151411; }
+.card .modifier-alt { display: inline-flex; flex: 0 0 auto; align-items: center; min-height: 29px; padding: 6px 9px; border: 1px solid #151411; color: #151411; background: #f4efe3; font: 10px 'DM Mono', monospace; cursor: pointer; }
+.card .modifier-alt.active { color: #f4efe3; background: #151411; }
+.modifier-alt input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .builder-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 12px; border-top: 1px solid #151411; }
 .builder-preview span { color: #605c54; font: 10px 'DM Mono', monospace; }
 .builder-preview strong { flex: 1; font: 600 15px 'DM Mono', monospace; }
