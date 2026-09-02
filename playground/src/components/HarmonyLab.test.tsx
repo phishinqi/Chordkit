@@ -16,7 +16,7 @@ describe('Harmony card sources', () => {
   it('uploads MIDI directly into Harmony Lab', async () => {
     render(<HarmonyLab locale="zh" midiTimeline={null} />);
     fireEvent.click(document.querySelector('.source-tabs button:nth-child(2)')!);
-    const bytes = Uint8Array.from([77,84,104,100,0,0,0,6,0,0,0,1,1,224,77,84,114,107,0,0,0,12,0,144,60,100,0,144,64,100,0,144,67,100]);
+    const bytes = Uint8Array.from([77,84,104,100,0,0,0,6,0,0,0,1,1,224,77,84,114,107,0,0,0,16,0,144,60,100,0,144,64,100,0,144,67,100,0,255,47,0]);
     const file = { name: 'triad.mid', arrayBuffer: async () => bytes.buffer } as unknown as File;
     const input = document.querySelector('.harmony-upload input')!;
     fireEvent.change(input, { target: { files: [file] } });

@@ -166,6 +166,7 @@ export interface MidiParseResult {
   noteSpans: NoteSpan[];
   timing: TimingDefinition;
   diagnostics: MidiDiagnostic[];
+  finalTick: number;
 }
 
 export interface TimelineSnapshot {

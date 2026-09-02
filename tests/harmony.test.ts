@@ -97,6 +97,24 @@ describe('Harmony analysis', () => {
     expect(parseChordSymbol('Bb/C').analysis.primary?.name).toBe('C9sus4(no5)');
     expect(parseChordSymbol('E/Gb').analysis.primary?.name).toBe('Gb9sus4(no5)');
   });
+  it('keeps batch harmonic segments final while snapshots remain provisional until end', async () => {
+    const timeline = buildTimeline([
+      { track: 0, channel: 0, midi: 60, startTick: 0, endTick: 480, velocity: 100, sustained: false },
+      { track: 0, channel: 0, midi: 64, startTick: 0, endTick: 480, velocity: 100, sustained: false },
+      { track: 0, channel: 0, midi: 67, startTick: 0, endTick: 480, velocity: 100, sustained: false },
+    ], undefined, { gridBeats: 1 });
+    const segments = timeline.windows.map((window) => ({ startTick: window.startTick, endTick: window.endTick, startMs: 0, endMs: 0, activeNotes: window.activeNotes, onsets: window.onsets, analysis: analyzeChord(window.activeNotes.map((note) => note.midi)), boundaryReasons: window.boundaryReasons, stats: { noteCount: window.activeNotes.length, uniqueMidiCount: new Set(window.activeNotes.map((note) => note.midi)).size, averageVelocity: 100, durationTicks: window.endTick - window.startTick, durationMs: 0 }, scope: 'global' as const, scopeKey: null, diagnostics: window.diagnostics }));
+    const batch = analyzeHarmonicTimeline({ ...timeline, segments });
+    expect(batch.segments.at(-1)?.provisional).toBe(true);
+    expect(batch.segments.slice(0, -1).every((segment) => !segment.provisional)).toBe(true);
+
+    const snapshots = [];
+    for await (const snapshot of analyzeHarmonicEventSnapshots(stream(), { key: { tonic: 'C', mode: 'major' } })) snapshots.push(snapshot);
+    expect(snapshots.some((snapshot) => snapshot.provisional)).toBe(true);
+    expect(snapshots.at(-1)?.provisional).toBe(false);
+    expect(snapshots.at(-1)?.harmony.segments.at(-1)?.provisional).toBe(true);
+  });
+
 });
 
 async function* stream() {

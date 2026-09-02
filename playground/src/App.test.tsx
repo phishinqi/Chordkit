@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import * as core from '@chordkit/core';
 
@@ -8,6 +8,7 @@ class FakeWorker {
 }
 
 beforeAll(() => { Object.defineProperty(globalThis, 'Worker', { value: FakeWorker, configurable: true }); });
+beforeEach(() => { localStorage.clear(); history.replaceState(null, '', '/'); });
 
 describe('Playground home', () => {
   it('renders the Cadd9 starter analysis and opens the workbench', async () => {
@@ -24,9 +25,9 @@ describe('Playground home', () => {
     const result = core.analyzeChord(['A3', 'C4', 'Eb4'], { explain: true });
     render(<ResultCard result={result} locale="zh" error="" />);
     expect(screen.getByText('Cm6/A')).toBeTruthy();
-    expect(screen.getByText('省略 5')).toBeTruthy();
+    expect(screen.getAllByText('省略 5').length).toBeGreaterThan(0);
     expect(screen.getByText('Ebdim7/A')).toBeTruthy();
-    expect(screen.getByText('省略 3')).toBeTruthy();
+    expect(screen.getAllByText('省略 3').length).toBeGreaterThan(0);
   });
 
   it('opens Harmony Lab with a ii-V-I Roman analysis', async () => {

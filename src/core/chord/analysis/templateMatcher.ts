@@ -1,14 +1,23 @@
-import { intervalsMatch } from '../intervals';
 import type { ChordTemplate } from '../templates';
 
+function pitchClass(interval: number): number {
+  return ((interval % 12) + 12) % 12;
+}
+
 export function foldDuplicatePitchClasses(intervals: readonly number[]): number[] {
-  const seen = new Set<number>();
-  return [...intervals].sort((left, right) => left - right).filter((interval) => {
-    const pitchClass = ((interval % 12) + 12) % 12;
-    if (seen.has(pitchClass)) return false;
-    seen.add(pitchClass);
-    return true;
-  });
+  return [...new Set(intervals.map(pitchClass))].sort((left, right) => left - right);
+}
+
+function sameIntervals(actual: readonly number[], expected: readonly number[]): boolean {
+  return actual.length === expected.length && actual.every((value, index) => value === expected[index]);
+}
+
+function registeredIntervalsMatch(actual: readonly number[], expected: readonly number[]): boolean {
+  const actualSimple = actual.filter((interval) => interval < 12).map(pitchClass).sort((a, b) => a - b);
+  const actualCompound = actual.filter((interval) => interval >= 12).sort((a, b) => a - b);
+  const expectedSimple = expected.filter((interval) => interval < 12).sort((a, b) => a - b);
+  const expectedCompound = expected.filter((interval) => interval >= 12).sort((a, b) => a - b);
+  return sameIntervals(actualSimple, expectedSimple) && expectedCompound.every((interval) => actualCompound.includes(interval));
 }
 
 export function matchTemplates(
@@ -18,8 +27,10 @@ export function matchTemplates(
 ): ChordTemplate[] {
   const folded = foldDuplicatePitchClasses(intervals);
   return templates.filter((template) => {
-    if (template.registerRequirement === 'compound' && !registerIntervals.some((interval) => interval >= 12)) return false;
-    return intervalsMatch(folded, template.intervals);
+    const expectedPitchClasses = foldDuplicatePitchClasses(template.intervals);
+    if (!sameIntervals(folded, expectedPitchClasses)) return false;
+    if (template.registerRequirement !== 'compound') return true;
+    return registeredIntervalsMatch(registerIntervals, template.intervals);
   });
 }
 

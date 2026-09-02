@@ -1,6 +1,6 @@
 {
   "name": "@phishinqi/chordkit",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Register-aware chord analysis for TypeScript",
   "license": "GPL-3.0-only",
   "type": "module",

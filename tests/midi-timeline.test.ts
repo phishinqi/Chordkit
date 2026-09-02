@@ -170,4 +170,58 @@ describe('MIDI parsing, timing, and chord timeline segmentation', () => {
     expect(() => parseMidi(Uint8Array.from([...ascii('MThd'), ...u32(6), ...u16(2), ...u16(1), ...u16(480)]))).toThrow(ChordInputError);
     expect(() => parseMidi(Uint8Array.from([...ascii('MThd'), ...u32(6), ...u16(0), ...u16(1), ...u16(480), ...ascii('MTrk'), ...u32(4), 0x81, 0x81, 0x81, 0x81]))).toThrow(ChordInputError);
   });
+
+  it('validates every direct MIDI event variant at both timeline entry points', () => {
+    const invalid: MidiEvent[] = [
+      event('noteOn', 0, 0, { channel: 0, midi: 128, velocity: 100 }),
+      event('noteOff', 0, 1, { channel: 16, midi: 60, releaseVelocity: 0 }),
+      event('controlChange', 0, 2, { channel: 0, controller: 64, value: -1 }),
+      event('tempoChange', 0, 3, { bpm: Number.NaN }),
+      event('timeSignatureChange', 0, 4, { numerator: 3, denominator: 3 }),
+    ];
+    for (const midiEvent of invalid) {
+      expect(() => buildTimeline([midiEvent])).toThrow(ChordInputError);
+      expect(() => new ChordTimelineEngine().push(midiEvent)).toThrow(ChordInputError);
+    }
+  });
+
+  it('validates NoteSpan ranges, applies endTick without mutation, and honors half-open overlap', () => {
+    const span: NoteSpan = { track: 0, channel: 0, midi: 60, startTick: 0, endTick: 960, velocity: 100, sustained: false };
+    const draft = buildTimeline([span], undefined, { endTick: 480 });
+    expect(draft.noteSpans[0]?.endTick).toBe(480);
+    expect(span.endTick).toBe(960);
+    expect(() => buildTimeline([{ ...span, startTick: 20, endTick: 10 }])).toThrow(ChordInputError);
+    expect(() => buildTimeline([{ ...span, midi: 128 }])).toThrow(ChordInputError);
+    expect(() => buildTimeline([{ ...span, velocity: Number.POSITIVE_INFINITY }])).toThrow(ChordInputError);
+    const boundary = buildTimeline([{ ...span, startTick: 480, endTick: 960 }], undefined, { minimumOverlap: 0, gridBeats: 1 });
+    expect(boundary.windows.some((window) => window.startTick === 0 && window.activeNotes.length > 0)).toBe(false);
+  });
+
+  it('closes dangling notes at the accumulated EOT tick', () => {
+    const track = [...noteOn(0, 60), ...endTrack(480)];
+    const parsed = parseMidi(smf(0, [track]));
+    expect(parsed.finalTick).toBe(480);
+    expect(parsed.noteSpans[0]).toMatchObject({ startTick: 0, endTick: 480, endReason: 'file-end' });
+  });
+
+  it('rejects malformed EOT payloads and preserves cutoff boundaries', () => {
+    const malformed = [...noteOn(0, 60), ...vlq(0), 0xff, 0x2f, 0x01, 0x00];
+    expect(() => parseMidi(smf(0, [malformed]))).toThrow(/zero-length payload/);
+    const span: NoteSpan = { track: 0, channel: 0, midi: 60, startTick: 480, endTick: 960, velocity: 100, sustained: false };
+    const draft = buildTimeline([span], undefined, { endTick: 480 });
+    expect(draft.noteSpans).toHaveLength(0);
+    expect(buildTimeline([{ ...span, startTick: 479 }], undefined, { endTick: 480 }).noteSpans[0]).toMatchObject({ startTick: 479, endTick: 480 });
+  });
+
+  it('rejects non-finite timeline thresholds', () => {
+    const span: NoteSpan = { track: 0, channel: 0, midi: 60, startTick: 0, endTick: 480, velocity: 100, sustained: false };
+    for (const option of [{ gridBeats: Number.NaN }, { mergeWindowBeats: Number.POSITIVE_INFINITY }, { onsetToleranceBeats: Number.NaN }, { holdThresholdBeats: Number.NEGATIVE_INFINITY }]) {
+      expect(() => buildTimeline([span], undefined, option)).toThrow(ChordInputError);
+    }
+  });
+
+  it('rejects bytes after an EOT marker', () => {
+    const track = [...noteOn(0, 60), ...endTrack(), ...noteOn(0, 64)];
+    expect(() => parseMidi(smf(0, [track]))).toThrow(ChordInputError);
+  });
 });

@@ -82,7 +82,12 @@ export type TimelineStreamControl =
   | { readonly type: 'watermark'; readonly tick: number }
   | { readonly type: 'end'; readonly tick?: number };
 
-export type TimelineStreamItem = MidiEvent | TimelineStreamControl;
+export interface TimelineStreamDiagnostic {
+  readonly type: 'diagnostic';
+  readonly diagnostic: import('../core/chord/segmentation/types').MidiDiagnostic;
+}
+
+export type TimelineStreamItem = MidiEvent | TimelineStreamControl | TimelineStreamDiagnostic;
 
 export interface TimelineAnalysisSnapshot {
   readonly revision: number;
@@ -98,5 +103,9 @@ export interface StableStreamOptions extends TimelineOptions {
 export type StableSegment = ChordTimelineSegment;
 
 export interface StreamDecoderOptions {
+  readonly emitDiagnostics?: boolean;
+}
+
+export interface TimelineStreamOptions extends TimelineOptions {
   readonly emitDiagnostics?: boolean;
 }

@@ -15,7 +15,10 @@ function overlapRatio(span: NoteSpan, startTick: number, endTick: number): numbe
 }
 
 function activeAt(spans: readonly NoteSpan[], startTick: number, endTick: number, minimumOverlap: number): NoteSpan[] {
-  return spans.filter((span) => overlapRatio(span, startTick, endTick) >= minimumOverlap);
+  return spans.filter((span) => {
+    const overlap = Math.min(span.endTick, endTick) - Math.max(span.startTick, startTick);
+    return overlap > 0 && overlapRatio(span, startTick, endTick) >= minimumOverlap;
+  });
 }
 
 function activeKey(spans: readonly NoteSpan[]): string { return [...new Set(spans.map((span) => span.midi))].sort((a, b) => a - b).join(','); }

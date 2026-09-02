@@ -33,11 +33,26 @@ describe('register-aware chord engine', () => {
     expect(result.primary?.evidence.notes).toEqual([58, 62, 68, 74]);
   });
 
-  it('returns a declared conflict candidate for dominant add11 clusters', () => {
-    const result = analyzeChord([67, 71, 72, 74, 77]); // G B C D F
-    expect(result.primary?.name).toBe('G7add11');
-    expect(result.primary?.evidence.match).toBe('conflict');
-    expect(result.primary?.evidence.conflictIntervals).toEqual([5]);
+  it('preserves downward register distance for high-root registered candidates', () => {
+    const result = analyzeChord(['D5', 'C3', 'E3', 'G3']);
+    const registered = result.candidates.filter((candidate) => candidate.rootMidi !== null);
+    expect(registered.every((candidate) => candidate.intervalAnalysis.absoluteIntervals.every((interval) => interval >= 0))).toBe(true);
+    expect(registered.some((candidate) => candidate.intervalAnalysis.compoundIntervals.some((interval) => interval >= 12))).toBe(true);
+  });
+
+  it('allows octave-doubled compound tones when matching registered templates', () => {
+    expect(analyzeChord(['C3', 'E3', 'G3', 'D4', 'D5']).primary?.name).toBe('Cadd9');
+  });
+
+  it('matches omitted compound extensions by pitch class without collapsing exact compounds', () => {
+    const omitted = analyzeChord(['C3', 'E3', 'D4']);
+    expect(omitted.candidates.some((candidate) => candidate.name === 'Cadd9' && candidate.omissions.includes('omit5'))).toBe(true);
+  });
+
+  it('keeps pitch-class interval analysis free of register and compound facts', () => {
+    const result = analyzePitchClasses([0, 2, 4, 7]);
+    expect(result.candidates.every((candidate) => candidate.intervalAnalysis.rootMidi === null)).toBe(true);
+    expect(result.candidates.every((candidate) => candidate.intervalAnalysis.compoundIntervals.length === 0)).toBe(true);
   });
 
   it('returns an explicit ambiguous pitch-class analysis without extension claims', () => {

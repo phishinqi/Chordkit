@@ -70,7 +70,7 @@ const timeline = engine.analyze(960);
 
 ## Diagnostics
 
-Recoverable issues are returned as `info`, `warning` or `error` diagnostics. Examples include filtered low-velocity notes, unmatched note-off events, unclosed file-end notes, ignored SysEx and unknown meta events. Invalid SMF headers, format 2, SMPTE division, truncated chunks and invalid VLQs throw `ChordInputError`.
+Recoverable issues are returned as `info`, `warning` or `error` diagnostics. Examples include filtered low-velocity notes, unmatched note-off events, unclosed file-end notes, ignored SysEx and unknown meta events. Invalid SMF headers, format 2, SMPTE division, truncated chunks, missing/duplicate EOT markers, data after EOT, and invalid VLQs throw `ChordInputError`. An EOT delta advances the track's final tick, so file-end note closure uses the true accumulated track position.
 
 ## Pipeline and streaming
 

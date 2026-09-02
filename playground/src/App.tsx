@@ -29,7 +29,7 @@ export default function App() {
   const [locale, setLocale] = useState<Locale>('zh');
   const tx = t(locale); const [tab, setTab] = useState<Tab>('home'); const [sound, setSound] = useState(false);
   const [workspace, setWorkspace] = useState<WorkspaceState>(() => decodeWorkspace(location.hash) ?? loadWorkspace());
-  const [customScore, setCustomScore] = useState('return Math.min(100, 74 + context.candidate.extensions.length * 5);'); const [callbackStatus, setCallbackStatus] = useState('');
+  const [customScore, setCustomScore] = useState('return 74;'); const [callbackStatus, setCallbackStatus] = useState('');
   const [midiData, setMidiData] = useState<unknown>(null); const [midiResult, setMidiResult] = useState<unknown>(null); const [midiError, setMidiError] = useState('');
   const [liveEvents, setLiveEvents] = useState<unknown[]>([]); const [webMidi, setWebMidi] = useState(''); const [midiOutputs, setMidiOutputs] = useState<BrowserMidiOutput[]>([]); const [midiOutputId, setMidiOutputId] = useState(''); const midiAccessRef = useRef<BrowserMidiAccess | null>(null); const [streamResult, setStreamResult] = useState<unknown>(null);
   const [apiError, setApiError] = useState(''); const [shared, setShared] = useState(false); const [harmonyInsertion, setHarmonyInsertion] = useState<{ id: number; candidate: core.ChordCandidate } | null>(null);
@@ -55,7 +55,7 @@ export default function App() {
     if (output) sendMidiNotes(output, [midi]);
   };
   const addToHarmony = (candidate: core.ChordCandidate) => { setHarmonyInsertion({ id: Date.now(), candidate }); setTab('harmony'); };
-  const reset = () => { setWorkspace({ ...workspace, notes: DEFAULT_NOTES }); setCustomScore('return Math.min(100, 74 + context.candidate.extensions.length * 5);'); };
+  const reset = () => { setWorkspace({ ...workspace, notes: DEFAULT_NOTES }); setCustomScore('return 74;'); };
   const share = async () => { const value = encodeWorkspace(workspace); history.replaceState(null, '', `#${value}`); await navigator.clipboard.writeText(location.href); setShared(true); setTimeout(() => setShared(false), 1200); };
   const validateCode = () => callbackWorker.postMessage({ source: customScore, context: { candidate: { extensions: [9] } } });
   useEffect(() => { callbackWorker.onmessage = (event: MessageEvent<{ ok: boolean; value?: unknown; error?: string }>) => setCallbackStatus(event.data.ok ? `✓ ${json(event.data.value)}` : `✕ ${event.data.error}`); }, []);

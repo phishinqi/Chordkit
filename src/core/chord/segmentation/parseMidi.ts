@@ -36,6 +36,7 @@ export function parseMidi(data: Uint8Array | ArrayBuffer): MidiParseResult {
   const events: MidiEvent[] = [];
   let sequence = 0;
   const timing = normalizeTiming({ ppq: division, tempos: [], timeSignatures: [] });
+  const trackEndTicks: number[] = [];
   for (let track = 0; track < trackCount; track += 1) {
     if (reader.remaining < 8) throw new ChordInputError('Missing MTrk chunk');
     if (reader.readAscii(4) !== 'MTrk') throw new ChordInputError('Expected MTrk chunk');
@@ -43,8 +44,10 @@ export function parseMidi(data: Uint8Array | ArrayBuffer): MidiParseResult {
     const trackReader = new Reader(reader.readBytes(length));
     let tick = 0;
     let runningStatus: number | null = null;
+    let sawEndOfTrack = false;
     while (trackReader.remaining > 0) {
       const deltaTick = trackReader.readVlq();
+      if (!Number.isSafeInteger(tick + deltaTick)) throw new ChordInputError('MIDI tick exceeds safe integer range');
       tick += deltaTick;
       let status = trackReader.readByte();
       let firstData: number | null = null;
@@ -67,7 +70,12 @@ export function parseMidi(data: Uint8Array | ArrayBuffer): MidiParseResult {
         } else if (metaType === 0x58) {
           if (payload.length < 2) throw new ChordInputError('Invalid Time Signature meta event');
           events.push({ ...base, type: 'timeSignatureChange', numerator: payload[0]!, denominator: 2 ** payload[1]! });
-        } else if (metaType !== 0x2f) {
+        } else if (metaType === 0x2f) {
+          if (metaLength !== 0) throw new ChordInputError('End of Track meta event must have zero-length payload');
+          if (sawEndOfTrack) throw new ChordInputError(`Duplicate End of Track event in track ${track}`);
+          sawEndOfTrack = true;
+          if (trackReader.remaining > 0) throw new ChordInputError(`Data follows End of Track event in track ${track}`);
+        } else {
           diagnostics.push({ code: 'ignored-meta-event', severity: 'info', message: `Ignored MIDI meta event 0x${metaType.toString(16)}`, tick, track, sequence: base.sequence });
         }
         continue;
@@ -90,11 +98,13 @@ export function parseMidi(data: Uint8Array | ArrayBuffer): MidiParseResult {
       else if (command === 0xb) events.push({ ...base, type: 'controlChange', channel, controller: data1, value: data2! });
       else diagnostics.push({ code: 'ignored-channel-event', severity: 'info', message: `Ignored MIDI channel command 0x${command.toString(16)}`, tick, track, channel, sequence: base.sequence });
     }
+    if (!sawEndOfTrack) throw new ChordInputError(`Missing End of Track event in track ${track}`);
+    trackEndTicks.push(tick);
   }
   const tracker = new ActiveNoteTracker({}, timing);
   for (const event of stableSortMidiEvents(events)) tracker.push(event);
-  const lastTick = events.reduce((maximum, event) => Math.max(maximum, event.tick), 0);
+  const lastTick = Math.max(...trackEndTicks, 0);
   const noteSpans = tracker.flush(lastTick);
   const snapshot = tracker.snapshot();
-  return { format, events: snapshot.events, noteSpans, timing: snapshot.timing, diagnostics: [...diagnostics, ...snapshot.diagnostics] };
+  return { format, events: snapshot.events, noteSpans, timing: snapshot.timing, diagnostics: [...diagnostics, ...snapshot.diagnostics], finalTick: lastTick };
 }
