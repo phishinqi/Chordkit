@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, Music2, Plus, RotateCcw, Trash2, Upload } from 'lucide-react';
 import { analyzeMidi, type ChordTimeline } from '@chordkit/midi';
 import type { ChordCandidate } from '@chordkit/core';
@@ -94,8 +94,7 @@ export function HarmonyLab({ locale, midiTimeline, incomingCandidate }: { locale
         <div className="card-head"><span>{editingId ? tx.updateChord : tx.addChord}</span><small>{builderResult.value?.primary?.chord.evidence.match === 'exact' ? tx.exactTemplate : tx.experimentalChord}</small></div>
         <CardChoice label="Root" values={TONICS} selected={builder.root} onSelect={(root) => setBuilder((current) => ({ ...current, root }))} />
         <CardChoice label="Quality" values={QUALITIES} selected={builder.quality} onSelect={(quality) => setBuilder((current) => ({ ...current, quality: quality as CardQuality }))} />
-        <CardChoice label="Modifiers" values={MODIFIERS} selected={builder.modifiers} disabled={(modifier) => modifierIsDisabled(builder.modifiers, modifier as CardModifier, builder.alt)} multiple onSelect={(modifier) => toggleModifier(modifier as CardModifier)} />
-        <label className="modifier-alt"><input type="checkbox" checked={builder.alt ?? false} onChange={(event) => toggleAlt(event.target.checked)} />Alt</label>
+        <CardChoice label="Modifiers" values={MODIFIERS} selected={builder.modifiers} disabled={(modifier) => modifierIsDisabled(builder.modifiers, modifier as CardModifier, builder.alt)} multiple onSelect={(modifier) => toggleModifier(modifier as CardModifier)} accessory={<label className={`modifier-alt ${builder.alt ? 'active' : ''}`}><input type="checkbox" checked={builder.alt ?? false} onChange={(event) => toggleAlt(event.target.checked)} /><span>Alt</span></label>} />
         <CardChoice label="Bass" values={['—', ...TONICS]} selected={builder.bass ?? '—'} onSelect={(bass) => setBuilder((current) => ({ ...current, bass: bass === '—' ? null : bass }))} />
         <div className="builder-preview"><span>{tx.intervals}: {cardIntervals(builder).join(', ')}</span><strong>{cardLabel(builder)}</strong><button className="primary" onClick={saveBuilder}><Plus size={15}/>{editingId ? tx.updateChord : tx.addChord}</button></div>
         {modifierConflicts(builder.modifiers, builder.alt).length > 0 && <p className="error">Invalid modifier combination: {modifierConflicts(builder.modifiers, builder.alt).map(([left, right]) => `${left} + ${right}`).join(', ')}</p>}
@@ -117,9 +116,9 @@ export function HarmonyLab({ locale, midiTimeline, incomingCandidate }: { locale
   </section>;
 }
 
-function CardChoice({ label, values, selected, disabled, multiple = false, onSelect }: { label: string; values: readonly string[]; selected: string | readonly string[]; disabled?: (value: string) => boolean; multiple?: boolean; onSelect: (value: string) => void }) {
+function CardChoice({ label, values, selected, disabled, accessory, multiple = false, onSelect }: { label: string; values: readonly string[]; selected: string | readonly string[]; disabled?: (value: string) => boolean; accessory?: ReactNode; multiple?: boolean; onSelect: (value: string) => void }) {
   const selectedValues = Array.isArray(selected) ? selected : [selected];
-  return <div className="choice-row"><span>{label}</span><div>{values.map((value) => <button disabled={disabled?.(value) ?? false} className={selectedValues.includes(value) ? 'active' : ''} key={value} onClick={() => onSelect(value)}>{value}</button>)}</div></div>;
+  return <div className="choice-row"><span>{label}</span><div className="choice-options"><div className="choice-buttons">{values.map((value) => <button disabled={disabled?.(value) ?? false} className={selectedValues.includes(value) ? 'active' : ''} key={value} onClick={() => onSelect(value)}>{value}</button>)}</div>{accessory}</div></div>;
 }
 
 function HarmonySummary({ locale, progression, renderer }: { locale: Locale; progression: ReturnType<typeof harmony.analyzeProgression>; renderer: harmony.RomanRenderer }) {
