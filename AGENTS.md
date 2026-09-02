@@ -1251,6 +1251,16 @@ If this file conflicts with `docs/COMMIT-WORKFLOW.md` on Git or release operatio
 
 `docs/COMMIT-WORKFLOW.md` wins.
 
+## 25.1 Default Commit and Pull Request Behavior
+
+For any task that includes code or configuration changes, the agent MUST, after validation:
+
+1. create a Conventional Commit containing only the files relevant to the task;
+2. push the working branch to `origin`;
+3. create a Pull Request targeting `main`.
+
+This is the default behavior and does not require a separate user reminder. The agent MUST NOT add IDE files, temporary files, generated output, coverage, credentials, or unrelated user artifacts to the commit. If authentication, repository state, or another external blocker prevents the commit, push, or PR, the agent MUST report the exact blocker instead of silently stopping after local edits.
+
 ---
 
 # 26. Forbidden Operations
