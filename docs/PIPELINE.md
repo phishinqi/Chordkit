@@ -110,7 +110,7 @@ for await (const snapshot of analyzeEventSnapshots(liveEvents())) {
 
 ### Chunked SMF bytes
 
-`decodeMidiStream()` accepts arbitrary byte chunks and buffers one complete `MTrk` payload at a time, not the entire SMF. `analyzeStableMidiStream()` and `analyzeMidiSnapshots()` compose that decoder with the event-stream APIs.
+`decodeMidiStream()` accepts arbitrary byte chunks and buffers one complete `MTrk` payload at a time, not the entire SMF. `analyzeStableMidiStream()` and `analyzeMidiSnapshots()` compose that decoder with the event-stream APIs. Pass `{ emitDiagnostics: true }` to `decodeMidiStream()` to receive typed `{ type: 'diagnostic', diagnostic }` items for recoverable parser issues; the default remains event/control items only. `analyzeMidiSnapshots()` accepts the same option and includes received diagnostics in each subsequent timeline snapshot. Stable segment output remains segment-only, so decoder diagnostics should be observed directly when needed.
 
 For SMF format 1, track chunks are decoded in track-read order; downstream timeline analysis still applies the documented deterministic event ordering. Memory usage is bounded by the largest pending track payload plus downstream event/timeline state, not a fixed O(1) guarantee.
 ## Harmony adapters

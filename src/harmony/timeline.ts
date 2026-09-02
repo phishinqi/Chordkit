@@ -15,27 +15,39 @@ export function analyzeHarmonicTimeline(input: ChordTimeline | readonly ChordTim
   const harmonies = progression.events.map((event) => event.analysis);
   const voice = assignVoices(timeline.segments, options.overrides);
   const nonChordTones = classifyNonChordTones(timeline.segments, harmonies, voice.assignments, options.overrides);
-  const segments: HarmonicTimelineSegment[] = timeline.segments.map((segment, index) => ({ index, timeline: segment, harmony: harmonies[index]!, voices: voice.assignments.filter((assignment) => assignment.segmentIndex === index), nonChordTones: nonChordTones.filter((tone) => tone.segmentIndex === index), provisional: false }));
+  const terminalIndex = timeline.segments.length - 1;
+  const segments: HarmonicTimelineSegment[] = timeline.segments.map((segment, index) => ({ index, timeline: segment, harmony: harmonies[index]!, voices: voice.assignments.filter((assignment) => assignment.segmentIndex === index), nonChordTones: nonChordTones.filter((tone) => tone.segmentIndex === index), provisional: index === terminalIndex }));
   return { timeline, globalContext: progression.globalContext, keyCandidates: progression.keyCandidates, tonalSegments: progression.tonalSegments, segments, voiceLeading: voice.leading, nonChordTones };
 }
 
-export async function* analyzeHarmonicEventSnapshots(source: AsyncIterable<TimelineStreamItem>, options: HarmonyOptions = {}) : AsyncIterable<HarmonicSnapshot> {
+function withSnapshotProvisional(harmony: HarmonicTimeline, provisional: boolean): HarmonicTimeline {
+  if (!provisional || harmony.segments.length === 0) return harmony;
+  const lastIndex = harmony.segments.length - 1;
+  return {
+    ...harmony,
+    segments: harmony.segments.map((segment, index) => index === lastIndex ? { ...segment, provisional: true } : segment),
+  };
+}
+
+export async function* analyzeHarmonicEventSnapshots(source: AsyncIterable<TimelineStreamItem>, options: HarmonyOptions = {}): AsyncIterable<HarmonicSnapshot> {
   for await (const snapshot of analyzeEventSnapshots(source)) {
-    yield { revision: snapshot.revision, finalizedThroughTick: snapshot.finalizedThroughTick, isFinal: snapshot.isFinal, provisional: !snapshot.isFinal, harmony: analyzeHarmonicTimeline(snapshot.timeline, options) };
+    const provisional = !snapshot.isFinal;
+    const harmony = withSnapshotProvisional(analyzeHarmonicTimeline(snapshot.timeline, options), provisional);
+    yield { revision: snapshot.revision, finalizedThroughTick: snapshot.finalizedThroughTick, isFinal: snapshot.isFinal, provisional, harmony };
   }
 }
 
 export async function* analyzeStableHarmonicEventStream(source: AsyncIterable<TimelineStreamItem>, options: HarmonyOptions = {}): AsyncIterable<HarmonicTimelineSegment> {
-  const buffered: ChordTimelineSegment[] = [];
+  let previous: ChordTimelineSegment | undefined;
   for await (const segment of analyzeStableEventStream(source)) {
-    buffered.push(segment);
-    if (buffered.length < 2) continue;
-    const harmony = analyzeHarmonicTimeline(buffered.slice(-2), options);
-    const stable = harmony.segments[0]!;
-    yield { ...stable, provisional: false };
+    if (previous !== undefined) {
+      const harmony = analyzeHarmonicTimeline([previous, segment], options);
+      yield { ...harmony.segments[0]!, provisional: false };
+    }
+    previous = segment;
   }
-  if (buffered.length) {
-    const harmony = analyzeHarmonicTimeline([buffered.at(-1)!], options);
+  if (previous !== undefined) {
+    const harmony = analyzeHarmonicTimeline([previous], options);
     yield { ...harmony.segments[0]!, provisional: true };
   }
 }

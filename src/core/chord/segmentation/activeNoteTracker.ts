@@ -12,6 +12,40 @@ function pedalKey(event: ControlChangeEvent): string {
   return `${event.track}:${event.channel}`;
 }
 
+function requireInteger(value: number, label: string, minimum = 0): void {
+  if (!Number.isSafeInteger(value) || value < minimum) throw new ChordInputError(`${label} must be a non-negative safe integer: ${value}`);
+}
+
+function requireRange(value: number, label: string, maximum: number): void {
+  if (!Number.isInteger(value) || value < 0 || value > maximum) throw new ChordInputError(`${label} must be an integer between 0 and ${maximum}: ${value}`);
+}
+
+export function validateMidiEvent(event: MidiEvent): void {
+  requireInteger(event.tick, 'Event tick');
+  requireInteger(event.track, 'Event track');
+  requireInteger(event.sequence, 'Event sequence');
+  if (event.deltaTick !== undefined) requireInteger(event.deltaTick, 'Event deltaTick');
+  if (event.type === 'tempoChange') {
+    if (!Number.isFinite(event.bpm) || event.bpm <= 0) throw new ChordInputError(`Tempo BPM must be positive: ${event.bpm}`);
+    return;
+  }
+  if (event.type === 'timeSignatureChange') {
+    if (!Number.isInteger(event.numerator) || event.numerator <= 0 || !Number.isInteger(event.denominator) || event.denominator <= 0 || (event.denominator & (event.denominator - 1)) !== 0) {
+      throw new ChordInputError(`Invalid time signature: ${event.numerator}/${event.denominator}`);
+    }
+    return;
+  }
+  requireRange(event.channel, 'Event channel', 15);
+  if (event.type === 'controlChange') {
+    requireRange(event.controller, 'Event controller', 127);
+    requireRange(event.value, 'Event value', 127);
+    return;
+  }
+  requireRange(event.midi, 'Event MIDI note', 127);
+  if (event.type === 'noteOn') requireRange(event.velocity, 'Event velocity', 127);
+  else if (event.releaseVelocity !== undefined) requireRange(event.releaseVelocity, 'Event release velocity', 127);
+}
+
 export function midiEventPriority(event: MidiEvent): number {
   if (event.type === 'noteOff') return 0;
   if (event.type === 'controlChange') return 1;
@@ -38,7 +72,7 @@ export class ActiveNoteTracker {
   ) {}
 
   push(event: MidiEvent): void {
-    if (!Number.isInteger(event.tick) || event.tick < 0) throw new ChordInputError(`Event tick must be a non-negative integer: ${event.tick}`);
+    validateMidiEvent(event);
     this.lastTick = Math.max(this.lastTick, event.tick);
     this.events.push(event);
     if (event.type === 'tempoChange') {

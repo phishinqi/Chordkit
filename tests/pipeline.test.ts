@@ -19,6 +19,8 @@ function u16(value: number): number[] { return [(value >> 8) & 0xff, value & 0xf
 function u32(value: number): number[] { return [(value >>> 24) & 0xff, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff]; }
 function ascii(value: string): number[] { return [...value].map((character) => character.charCodeAt(0)); }
 function vlq(value: number): number[] { const out = [value & 0x7f]; for (let rest = value >> 7; rest; rest >>= 7) out.unshift((rest & 0x7f) | 0x80); return out; }
+function endTrack(delta = 0): number[] { return [...vlq(delta), 0xff, 0x2f, 0]; }
+function noteOn(delta: number, midi: number, velocity = 100): number[] { return [...vlq(delta), 0x90, midi, velocity]; }
 function smf(track: number[]): Uint8Array {
   return Uint8Array.from([...ascii('MThd'), ...u32(6), ...u16(0), ...u16(1), ...u16(480), ...ascii('MTrk'), ...u32(track.length), ...track]);
 }
@@ -69,11 +71,63 @@ describe('pipeline, strategies, caches, and streams', () => {
     expect(stable.map((segment) => segment.analysis.primary?.name)).toContain('C');
   });
 
-  it('decodes chunked MIDI bytes through the same stream contract', async () => {
-    const bytes = smf([...vlq(0), 0x90, 60, 100, ...vlq(240), 0x80, 60, 0, ...vlq(0), 0xff, 0x2f, 0]);
-    async function* chunks(): AsyncIterable<Uint8Array> { yield bytes.slice(0, 5); yield bytes.slice(5, 19); yield bytes.slice(19); }
-    const items = []; for await (const item of decodeMidiStream(chunks())) items.push(item);
-    expect(items.filter((item) => item.type === 'noteOn' || item.type === 'noteOff')).toHaveLength(2);
-    expect(items.at(-1)).toMatchObject({ type: 'end', tick: 240 });
+  it('rejects events that arrive after a watermark has finalized their tick', async () => {
+    const items: TimelineStreamItem[] = [
+      event('noteOn', 0, 0, { channel: 0, midi: 60, velocity: 100 }),
+      { type: 'watermark', tick: 480 },
+      event('noteOn', 480, 1, { channel: 0, midi: 64, velocity: 100 }),
+    ];
+    const iterator = analyzeEventSnapshots(source(items))[Symbol.asyncIterator]();
+    await iterator.next();
+    await iterator.next();
+    await expect(iterator.next()).rejects.toThrow(/Late event/);
   });
+
+  it('supports arbitrary decoder transport chunks and propagates the accumulated terminal tick', async () => {
+    const bytes = smf([...noteOn(0, 60), ...endTrack(480)]);
+    async function* oneByteChunks(): AsyncIterable<Uint8Array> {
+      for (const value of bytes) yield Uint8Array.of(value);
+    }
+    const items = [];
+    for await (const item of decodeMidiStream(oneByteChunks())) items.push(item);
+    expect(items.at(-1)).toEqual({ type: 'end', tick: 480 });
+    expect(items.filter((item) => item.type === 'noteOn')).toHaveLength(1);
+  });
+
+  it('rejects duplicate and decreasing terminal controls', async () => {
+    const duplicate: TimelineStreamItem[] = [{ type: 'end', tick: 0 }, { type: 'end', tick: 0 }];
+    const duplicateIterator = analyzeEventSnapshots(source(duplicate))[Symbol.asyncIterator]();
+    await duplicateIterator.next();
+    await expect(duplicateIterator.next()).rejects.toThrow(/already ended/);
+    const decreasing: TimelineStreamItem[] = [{ type: 'watermark', tick: 480 }, { type: 'watermark', tick: 240 }];
+    const decreasingIterator = analyzeEventSnapshots(source(decreasing))[Symbol.asyncIterator]();
+    await decreasingIterator.next();
+    await expect(decreasingIterator.next()).rejects.toThrow(/must not decrease/);
+  });
+
+  it('emits diagnostic-only snapshots without provisional file-end diagnostics', async () => {
+    const items: TimelineStreamItem[] = [{ type: 'diagnostic', diagnostic: { code: 'test', severity: 'info', message: 'test', tick: 0 } }];
+    const snapshots = [];
+    for await (const snapshot of analyzeEventSnapshots(source(items))) snapshots.push(snapshot);
+    expect(snapshots).toHaveLength(1);
+    const diagnostic = items[0];
+    if (!diagnostic || diagnostic.type !== 'diagnostic') throw new Error('Expected diagnostic item');
+    expect(snapshots[0]?.timeline.diagnostics).toEqual([diagnostic.diagnostic]);
+    expect(snapshots[0]?.timeline.diagnostics.some((diagnostic) => diagnostic.code === 'unclosed-note')).toBe(false);
+  });
+
+  it('rejects input after a terminal end control', async () => {
+    const items: TimelineStreamItem[] = [{ type: 'end', tick: 0 }, event('noteOn', 1, 0, { channel: 0, midi: 60, velocity: 100 })];
+    const iterator = analyzeEventSnapshots(source(items))[Symbol.asyncIterator]();
+    await iterator.next();
+    await expect(iterator.next()).rejects.toThrow(/already ended/);
+  });
+
+  it('can expose decoder diagnostics as stream items', async () => {
+    const bytes = smf([...vlq(0), 0xff, 0x03, 0x01, 65, ...vlq(0), 0xff, 0x2f, 0]);
+    const items = [];
+    for await (const item of decodeMidiStream(source([bytes]), { emitDiagnostics: true })) items.push(item);
+    expect(items.some((item) => item.type === 'diagnostic' && item.diagnostic.code === 'ignored-meta-event')).toBe(true);
+  });
+
 });

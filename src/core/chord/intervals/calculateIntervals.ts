@@ -2,12 +2,8 @@ import type { IntervalAnalysis, NormalizedNote } from '../types';
 import { normalizePitchClass } from '../normalize/pitchClass';
 
 export function calculateIntervals(root: NormalizedNote, notes: readonly NormalizedNote[]): IntervalAnalysis {
-  const absoluteIntervals = notes.map((note) => {
-    let value = note.midi - root.midi;
-    while (value < 0) value += 12;
-    return value;
-  }).sort((a, b) => a - b);
-  const simpleIntervals = [...new Set(absoluteIntervals.map(normalizePitchClass))].sort((a, b) => a - b);
+  const absoluteIntervals = notes.map((note) => Math.abs(note.midi - root.midi)).sort((a, b) => a - b);
+  const simpleIntervals = [...new Set(notes.map((note) => normalizePitchClass(note.midi - root.midi)))].sort((a, b) => a - b);
   return {
     rootMidi: root.midi,
     rootPitchClass: root.pitchClass,
@@ -26,5 +22,6 @@ export function calculatePitchClassIntervals(rootPitchClass: number, pitchClasse
 export function intervalsMatch(actual: readonly number[], expected: readonly number[]): boolean {
   if (actual.length !== expected.length) return false;
   const key = (interval: number) => interval >= 12 ? `compound:${interval}` : `simple:${normalizePitchClass(interval)}`;
-  return [...actual].map(key).sort().every((value, index) => value === [...expected].map(key).sort()[index]);
+  const expectedKeys = [...expected].map(key).sort();
+  return [...actual].map(key).sort().every((value, index) => value === expectedKeys[index]);
 }

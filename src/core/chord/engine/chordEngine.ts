@@ -122,7 +122,7 @@ export function analyzeRegisteredNotes(notes: readonly NormalizedNote[], options
     const analysis = calculateIntervals(root, notes);
     const inversion = inversionIndex(root.pitchClass, notes);
     const voicing = analyzeVoicing(notes);
-    const matchingIntervals = foldDuplicatePitchClasses(analysis.absoluteIntervals);
+    const matchingIntervals = analysis.simpleIntervals;
     for (const template of matchTemplates(matchingIntervals, templates, analysis.absoluteIntervals)) {
       // Conflict/avoid-note realizations are intentionally conservative: when
       // the root is not in the bass, leave room for an independently recognized

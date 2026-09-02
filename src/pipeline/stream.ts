@@ -1,8 +1,8 @@
 import { ChordInputError } from '../core/chord/types';
 import { parseMidi } from '../core/chord/segmentation/parseMidi';
 import { ChordTimelineEngine } from '../core/chord/segmentation/timelineEngine';
-import type { ChordTimeline, ChordTimelineSegment, MidiEvent, TimelineOptions } from '../core/chord/segmentation/types';
-import type { StableStreamOptions, TimelineAnalysisSnapshot, TimelineStreamControl, TimelineStreamItem } from './types';
+import type { ChordTimeline, ChordTimelineSegment, MidiDiagnostic, MidiEvent, TimelineOptions } from '../core/chord/segmentation/types';
+import type { StableStreamOptions, StreamDecoderOptions, TimelineAnalysisSnapshot, TimelineStreamControl, TimelineStreamDiagnostic, TimelineStreamItem, TimelineStreamOptions } from './types';
 
 class AsyncByteQueue {
   private readonly chunks: Uint8Array[] = [];
@@ -51,7 +51,7 @@ function join(...parts: readonly Uint8Array[]): Uint8Array { const length = part
  * Format 1 events are emitted in track-read order; consumers that require global ordering
  * should use the supplied stream analysis APIs, which retain their deterministic ordering rules.
  */
-export async function* decodeMidiStream(chunks: AsyncIterable<Uint8Array>): AsyncIterable<MidiEvent | TimelineStreamControl> {
+export async function* decodeMidiStream(chunks: AsyncIterable<Uint8Array>, options: StreamDecoderOptions = {}): AsyncIterable<MidiEvent | TimelineStreamControl | TimelineStreamDiagnostic> {
   const source = chunks[Symbol.asyncIterator]();
   const queue = new AsyncByteQueue();
   if (ascii(await queue.read(source, 4)) !== 'MThd') throw new ChordInputError('Missing MThd header');
@@ -72,6 +72,10 @@ export async function* decodeMidiStream(chunks: AsyncIterable<Uint8Array>): Asyn
     const trackPayload = await queue.read(source, trackLength);
     const standalone = join(singleHeader, asciiBytes('MTrk'), be32(trackPayload.byteLength), trackPayload);
     const parsed = parseMidi(standalone);
+    lastTick = Math.max(lastTick, parsed.finalTick);
+    for (const diagnostic of parsed.diagnostics) {
+      if (options.emitDiagnostics) yield { type: 'diagnostic', diagnostic: { ...diagnostic, track, sequence: nextSequence++ } };
+    }
     for (const event of parsed.events) {
       const remapped = { ...event, track, sequence: nextSequence++ } as MidiEvent;
       lastTick = Math.max(lastTick, remapped.tick);
@@ -82,28 +86,82 @@ export async function* decodeMidiStream(chunks: AsyncIterable<Uint8Array>): Asyn
 }
 
 function isControl(item: TimelineStreamItem): item is TimelineStreamControl { return item.type === 'watermark' || item.type === 'end'; }
+function isDiagnostic(item: TimelineStreamItem): item is TimelineStreamDiagnostic { return item.type === 'diagnostic'; }
 function controlTick(control: TimelineStreamControl, fallback: number): number {
   const tick = control.tick ?? fallback;
-  if (!Number.isInteger(tick) || tick < 0) throw new ChordInputError(`Stream control tick must be a non-negative integer: ${tick}`);
+  if (!Number.isSafeInteger(tick) || tick < 0) throw new ChordInputError(`Stream control tick must be a non-negative safe integer: ${tick}`);
   return tick;
 }
-function lastEventTick(engine: ChordTimelineEngine): number { return engine.snapshot().events.reduce((maximum, event) => Math.max(maximum, event.tick), 0); }
-function analyzeAt(engine: ChordTimelineEngine, tick?: number): ChordTimeline { return engine.analyze(Math.max(tick ?? 0, lastEventTick(engine))); }
+function analyzeAt(engine: ChordTimelineEngine, tick: number, latestEventTick: number): ChordTimeline { return engine.analyze(Math.max(tick, latestEventTick)); }
+function withoutProvisionalFileEndDiagnostics(timeline: ChordTimeline): ChordTimeline {
+  const isProvisional = (diagnostic: MidiDiagnostic): boolean => diagnostic.code === 'unclosed-note' || diagnostic.code === 'file-end';
+  return {
+    ...timeline,
+    diagnostics: timeline.diagnostics.filter((diagnostic) => !isProvisional(diagnostic)),
+    segments: timeline.segments.map((segment) => ({
+      ...segment,
+      diagnostics: segment.diagnostics.filter((diagnostic) => !isProvisional(diagnostic)),
+    })),
+  };
+}
+
+function diagnosticKey(diagnostic: MidiDiagnostic): string {
+  return [diagnostic.code, diagnostic.tick ?? '', diagnostic.track ?? '', diagnostic.channel ?? '', diagnostic.sequence ?? '', diagnostic.message].join(':');
+}
+
+function withDiagnostics(timeline: ChordTimeline, diagnostics: readonly MidiDiagnostic[], isFinal = false): ChordTimeline {
+  const visible = isFinal ? timeline : withoutProvisionalFileEndDiagnostics(timeline);
+  if (!diagnostics.length) return visible;
+  const seen = new Set(visible.diagnostics.map(diagnosticKey));
+  const additions = diagnostics.filter((diagnostic) => {
+    if (!isFinal && (diagnostic.code === 'unclosed-note' || diagnostic.code === 'file-end')) return false;
+    const key = diagnosticKey(diagnostic);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return additions.length ? { ...visible, diagnostics: [...visible.diagnostics, ...additions] } : visible;
+}
 
 export async function* analyzeEventSnapshots(source: AsyncIterable<TimelineStreamItem>, options: TimelineOptions = {}): AsyncIterable<TimelineAnalysisSnapshot> {
   const engine = new ChordTimelineEngine(options.timing, options);
+  const diagnostics: MidiDiagnostic[] = [];
   let revision = 0;
+  let latestEventTick = 0;
+  let hasLatestEvent = false;
   let finalizedThroughTick = 0;
+  let hasFinalizedWatermark = false;
+  let hasEnded = false;
   for await (const item of source) {
+    if (hasEnded) throw new ChordInputError('Stream has already ended');
+    if (isDiagnostic(item)) {
+      diagnostics.push(item.diagnostic);
+      const timeline = withDiagnostics(analyzeAt(engine, finalizedThroughTick, latestEventTick), diagnostics);
+      yield { revision: ++revision, isFinal: false, finalizedThroughTick, timeline };
+      continue;
+    }
     if (isControl(item)) {
-      const tick = controlTick(item, finalizedThroughTick);
-      const timeline = analyzeAt(engine, tick);
-      finalizedThroughTick = Math.max(finalizedThroughTick, tick, lastEventTick(engine));
+      const tick = controlTick(item, hasLatestEvent ? latestEventTick : finalizedThroughTick);
+      if (item.type === 'watermark' && hasFinalizedWatermark && tick < finalizedThroughTick) {
+        throw new ChordInputError(`Watermark must not decrease below ${finalizedThroughTick}: ${tick}`);
+      }
+      if (item.type === 'end' && hasEnded) throw new ChordInputError('Duplicate end control');
+      const analysisTick = Math.max(tick, latestEventTick);
+      const timeline = withDiagnostics(analyzeAt(engine, analysisTick, latestEventTick), diagnostics, item.type === 'end');
+      finalizedThroughTick = item.type === 'end'
+        ? Math.max(finalizedThroughTick, tick, latestEventTick)
+        : Math.max(finalizedThroughTick, tick);
+      hasFinalizedWatermark = true;
+      if (item.type === 'end') hasEnded = true;
       yield { revision: ++revision, isFinal: item.type === 'end', finalizedThroughTick, timeline };
       continue;
     }
+    if (!Number.isSafeInteger(item.tick) || item.tick < 0) throw new ChordInputError(`Event tick must be a non-negative safe integer: ${item.tick}`);
+    if (hasFinalizedWatermark && item.tick <= finalizedThroughTick) throw new ChordInputError(`Late event at or before finalized watermark ${finalizedThroughTick}: ${item.tick}`);
     engine.push(item);
-    const timeline = analyzeAt(engine, finalizedThroughTick);
+    latestEventTick = hasLatestEvent ? Math.max(latestEventTick, item.tick) : item.tick;
+    hasLatestEvent = true;
+    const timeline = withDiagnostics(analyzeAt(engine, Math.max(finalizedThroughTick, latestEventTick), latestEventTick), diagnostics);
     yield { revision: ++revision, isFinal: false, finalizedThroughTick, timeline };
   }
 }
@@ -112,7 +170,17 @@ function stableSegments(timeline: ChordTimeline, watermark: number, emitted: Set
   const output: ChordTimelineSegment[] = [];
   for (const segment of timeline.segments) {
     const key = `${segment.startTick}:${segment.endTick}:${segment.analysis.primary?.name ?? 'no-chord'}:${segment.scope}:${segment.scopeKey ?? ''}`;
-    if (segment.endTick <= watermark && !emitted.has(key)) { emitted.add(key); output.push(segment); }
+    if (segment.endTick > watermark || emitted.has(key)) continue;
+    const seen = new Set(segment.diagnostics.map(diagnosticKey));
+    const diagnostics = timeline.diagnostics.filter((diagnostic) => {
+      if (diagnostic.tick === undefined || diagnostic.tick < segment.startTick || diagnostic.tick >= segment.endTick) return false;
+      const diagnosticId = diagnosticKey(diagnostic);
+      if (seen.has(diagnosticId)) return false;
+      seen.add(diagnosticId);
+      return true;
+    });
+    emitted.add(key);
+    output.push(diagnostics.length ? { ...segment, diagnostics: [...segment.diagnostics, ...diagnostics] } : segment);
   }
   return output;
 }
@@ -120,17 +188,42 @@ function stableSegments(timeline: ChordTimeline, watermark: number, emitted: Set
 export async function* analyzeStableEventStream(source: AsyncIterable<TimelineStreamItem>, options: StableStreamOptions = {}): AsyncIterable<ChordTimelineSegment> {
   const engine = new ChordTimelineEngine(options.timing, options);
   const emitted = new Set<string>();
+  const diagnostics: MidiDiagnostic[] = [];
   let watermark = options.startTick ?? 0;
+  let hasWatermark = options.startTick !== undefined;
+  let latestEventTick = 0;
+  let hasLatestEvent = false;
+  let hasEnded = false;
   for await (const item of source) {
-    if (isControl(item)) {
-      watermark = Math.max(watermark, controlTick(item, watermark), lastEventTick(engine));
-      const timeline = analyzeAt(engine, watermark);
-      for (const segment of stableSegments(timeline, watermark, emitted)) yield segment;
+    if (hasEnded) throw new ChordInputError('Stream has already ended');
+    if (isDiagnostic(item)) {
+      diagnostics.push(item.diagnostic);
       continue;
     }
+    if (isControl(item)) {
+      const tick = controlTick(item, hasLatestEvent ? latestEventTick : watermark);
+      if (item.type === 'watermark' && hasWatermark && tick < watermark) {
+        throw new ChordInputError(`Watermark must not decrease below ${watermark}: ${tick}`);
+      }
+      watermark = item.type === 'end'
+        ? Math.max(watermark, tick, latestEventTick)
+        : Math.max(watermark, tick);
+      hasWatermark = true;
+      const timeline = withDiagnostics(analyzeAt(engine, watermark, latestEventTick), diagnostics, item.type === 'end');
+      for (const segment of stableSegments(timeline, watermark, emitted)) yield segment;
+      if (item.type === 'end') hasEnded = true;
+      continue;
+    }
+    if (!Number.isSafeInteger(item.tick) || item.tick < 0) throw new ChordInputError(`Event tick must be a non-negative safe integer: ${item.tick}`);
+    if (hasWatermark && item.tick <= watermark) throw new ChordInputError(`Late event at or before finalized watermark ${watermark}: ${item.tick}`);
     engine.push(item);
+    latestEventTick = hasLatestEvent ? Math.max(latestEventTick, item.tick) : item.tick;
+    hasLatestEvent = true;
   }
 }
 
-export async function* analyzeStableMidiStream(chunks: AsyncIterable<Uint8Array>, options: StableStreamOptions = {}): AsyncIterable<ChordTimelineSegment> { yield* analyzeStableEventStream(decodeMidiStream(chunks), options); }
-export async function* analyzeMidiSnapshots(chunks: AsyncIterable<Uint8Array>, options: TimelineOptions = {}): AsyncIterable<TimelineAnalysisSnapshot> { yield* analyzeEventSnapshots(decodeMidiStream(chunks), options); }
+export async function* analyzeStableMidiStream(chunks: AsyncIterable<Uint8Array>, options: StableStreamOptions = {}): AsyncIterable<ChordTimelineSegment> { yield* analyzeStableEventStream(decodeMidiStream(chunks, { emitDiagnostics: false }), options); }
+export async function* analyzeMidiSnapshots(chunks: AsyncIterable<Uint8Array>, options: TimelineStreamOptions = {}): AsyncIterable<TimelineAnalysisSnapshot> {
+  const { emitDiagnostics = false, ...timelineOptions } = options;
+  yield* analyzeEventSnapshots(decodeMidiStream(chunks, { emitDiagnostics }), timelineOptions);
+}
