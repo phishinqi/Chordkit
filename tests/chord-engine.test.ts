@@ -104,6 +104,39 @@ describe('register-aware chord engine', () => {
     expect(analyzeChord(['E##4', 'G##4', 'B##4'], { spelling: { preserveSource: true } }).primary?.root).toBe('E##');
     expect(() => analyzeChord(['C#b4'])).toThrow(ChordInputError);
   });
+  it('derives inversion ordinals from matched template degrees', () => {
+    const majorInversions = [
+      { notes: ['C3', 'E3', 'G3'], inversion: 0 },
+      { notes: ['E3', 'G3', 'C4'], inversion: 1 },
+      { notes: ['G3', 'C4', 'E4'], inversion: 2 },
+    ];
+    for (const { notes, inversion } of majorInversions) {
+      const candidate = analyzeChord(notes, { explain: true }).candidates
+        .find((entry) => entry.evidence.templateId === 'major' && entry.rootPitchClass === 0);
+      expect(candidate?.evidence.inversion).toBe(inversion);
+      const inversionComponent = candidate?.scoreBreakdown?.components
+        .find((component) => component.id === 'inversion');
+      if (inversion === 0) expect(inversionComponent).toBeUndefined();
+      else expect(inversionComponent?.value).toBe(-3 * inversion);
+    }
+
+    const dominantInversions = [
+      { notes: ['G2', 'B2', 'D3', 'F3'], inversion: 0 },
+      { notes: ['B2', 'D3', 'F3', 'G3'], inversion: 1 },
+      { notes: ['D3', 'F3', 'G3', 'B3'], inversion: 2 },
+      { notes: ['F3', 'G3', 'B3', 'D4'], inversion: 3 },
+    ];
+    for (const { notes, inversion } of dominantInversions) {
+      const candidate = analyzeChord(notes, { explain: true }).candidates
+        .find((entry) => entry.evidence.templateId === 'dominant7' && entry.rootPitchClass === 7);
+      expect(candidate?.evidence.inversion).toBe(inversion);
+    }
+
+    expect(analyzePitchClasses(['C', 'E', 'G']).candidates.every(
+      (candidate) => candidate.evidence.inversion === 0,
+    )).toBe(true);
+  });
+
   it('handles empty input and rejects invalid registered input', () => {
     expect(analyzeChord([]).primary).toBeNull();
     expect(() => analyzeChord(['C'])).toThrow(ChordInputError);
