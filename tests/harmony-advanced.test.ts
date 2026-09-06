@@ -22,7 +22,7 @@ describe('advanced harmony regression scenarios', () => {
   it('recognizes a jazz ii-V-I with a tritone substitution', () => {
     const result = analyzeProgression(['Dm7', 'Ab7', 'G7', 'Cmaj7'], { ...keyC, profile: 'jazz' });
 
-    expect(result.globalContext.label).toBe('C major');
+    expect(result.globalContext?.label).toBe('C major');
     expect(result.events.map((event) => event.analysis.primary?.renderings.analysis))
       .toEqual(['ii7', 'SubV/V', 'V7', 'Imaj7']);
     expect(result.events[1]?.analysis.primary?.function).toBe('tritoneSubstitution');
@@ -41,7 +41,7 @@ describe('advanced harmony regression scenarios', () => {
   it('keeps a borrowed iv in C major instead of promoting C minor', () => {
     const result = analyzeProgression(['Cmaj7', 'Fm/Ab', 'G7', 'Cmaj7'], keyC);
 
-    expect(result.globalContext.label).toBe('C major');
+    expect(result.globalContext?.label).toBe('C major');
     expect(result.tonalSegments).toHaveLength(1);
     expect(result.events.map((event) => event.analysis.primary?.renderings.analysis))
       .toEqual(['Imaj7', 'iv6 [naturalMinor]', 'V7', 'Imaj7']);
@@ -60,7 +60,7 @@ describe('advanced harmony regression scenarios', () => {
 
   it('tracks sus4 resolution and labels the delayed chord tone as a suspension', () => {
     const result = analyzeProgression(['Gsus4', 'G7', 'Cmaj7'], keyC);
-    expect(result.globalContext.label).toBe('C major');
+    expect(result.globalContext?.label).toBe('C major');
     expect(result.events.map((event) => event.analysis.primary?.roman.degree)).toEqual([5, 5, 1]);
     expect(result.events.map((event) => event.analysis.primary?.renderings.analysis))
       .toEqual(['Vsus4', 'V7', 'Imaj7']);
@@ -80,7 +80,7 @@ describe('advanced harmony regression scenarios', () => {
 
   it('recognizes an applied leading-tone diminished seventh and retains ambiguity without a tonic', () => {
     const resolved = analyzeProgression(['Cmaj7', 'C#dim7', 'Dm7', 'G7', 'Cmaj7'], keyC);
-    expect(resolved.globalContext.label).toBe('C major');
+    expect(resolved.globalContext?.label).toBe('C major');
     expect(resolved.events.map((event) => event.analysis.primary?.renderings.analysis))
       .toEqual(['Imaj7', 'vii°7/ii', 'ii7', 'V7', 'Imaj7']);
 
@@ -101,7 +101,7 @@ describe('advanced harmony regression scenarios', () => {
       'Dm',
     ], keyDMinor);
 
-    expect(result.globalContext.label).toBe('D harmonicMinor');
+    expect(result.globalContext?.label).toBe('D harmonicMinor');
     expect(result.events.map((event) => event.analysis.primary?.roman.special))
       .toEqual([undefined, 'N', 'It+6', undefined, undefined]);
     expect(result.events[1]?.analysis.primary?.function).toBe('neapolitan');
