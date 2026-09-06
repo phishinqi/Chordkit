@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Activity, AudioLines, Cable, ChevronDown, CircleHelp, Code2, Github, Grid2X2, Languages, Music, Play, Radio, RotateCcw, SlidersHorizontal, Sparkles, Upload, Waves } from 'lucide-react';
+import { Activity, AudioLines, Cable, ChevronDown, CircleHelp, Code2, FileText, Github, Grid2X2, Languages, Music, Play, Radio, RotateCcw, SlidersHorizontal, Sparkles, Upload, Waves } from 'lucide-react';
 import * as core from '@chordkit/core';
 import * as midi from '@chordkit/midi';
 import * as pipeline from '@chordkit/pipeline';
@@ -13,11 +13,12 @@ import { listMidiOutputs, sendMidiNotes, type BrowserMidiAccess, type BrowserMid
 import { JsonPanel, ApiExplorer } from './components/Panels';
 import { Piano } from './components/Piano';
 import { HarmonyLab } from './components/HarmonyLab';
+import { DocsTab } from './components/DocsTab';
 import './styles.css';
 
-type Tab = 'home' | 'core' | 'midi' | 'live' | 'pipeline' | 'harmony' | 'legacy' | 'explorer';
+type Tab = 'home' | 'core' | 'midi' | 'live' | 'pipeline' | 'harmony' | 'legacy' | 'explorer' | 'docs';
 const tabs: Array<[Tab, keyof ReturnType<typeof t>, typeof Music]> = [
-  ['home', 'home', Sparkles], ['core', 'core', Music], ['midi', 'midi', Waves], ['live', 'live', Radio], ['pipeline', 'pipeline', Cable], ['harmony', 'harmony', Activity], ['legacy', 'legacy', RotateCcw], ['explorer', 'explorer', Grid2X2],
+  ['home', 'home', Sparkles], ['core', 'core', Music], ['midi', 'midi', Waves], ['live', 'live', Radio], ['pipeline', 'pipeline', Cable], ['harmony', 'harmony', Activity], ['legacy', 'legacy', RotateCcw], ['explorer', 'explorer', Grid2X2], ['docs', 'docs', FileText],
 ];
 const callbackWorker = new Worker(new URL('./workers/callback.worker.ts', import.meta.url), { type: 'module' });
 
@@ -105,6 +106,7 @@ export default function App() {
       {tab === 'harmony' && <Lab title={tx.harmony} kicker="05 / KEY · ROMAN · VOICE LEADING"><HarmonyLab locale={locale} midiTimeline={midiResult as import('@chordkit/midi').ChordTimeline | null} incomingCandidate={harmonyInsertion} /></Lab>}
       {tab === 'legacy' && <Lab title={tx.legacy} kicker="06 / COMPATIBILITY ADAPTER"><section className="lab-grid"><div className="card"><h3>{tx.legacyCompare}</h3><p>{workspace.notes.join(', ')}</p><JsonPanel locale={locale} value={{ legacy: legacy.detect(workspace.notes), modern: analysis }}/></div><div className="card"><h3>Legacy helpers</h3><JsonPanel locale={locale} value={{ pitchClasses: legacy.getPitchClasses(workspace.notes), intervals: legacy.getIntervals(60, midiFromNotes(workspace.notes)) }}/></div></section></Lab>}
       {tab === 'explorer' && <Lab title={tx.explorer} kicker="07 / EVERY RUNTIME EXPORT + TYPE CATALOG"><ApiExplorer locale={locale}/></Lab>}
+      {tab === 'docs' && <Lab title={tx.docs} kicker="08 / BILINGUAL PUBLIC API GUIDE"><DocsTab locale={locale}/></Lab>}
     </main>
     <footer><span>Chordkit Playground · {tx.beta}</span><span>{tx.privacy}</span></footer>
   </div>;

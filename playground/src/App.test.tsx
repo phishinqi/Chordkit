@@ -39,6 +39,17 @@ describe('Playground home', () => {
     expect(screen.getAllByText(/V/).length).toBeGreaterThan(0);
   });
 
+  it('opens the bilingual Docs tab and runs an isolated temporary example', async () => {
+    const { default: App } = await import('./App');
+    render(<App />);
+    fireEvent.click(screen.getAllByText('文档 / Docs')[0]!);
+    expect(screen.getByText('Core 和弦分析')).toBeTruthy();
+    expect(screen.getAllByText('分析注册音符').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByText('运行')[0]!);
+    expect(await screen.findByText('运行成功')).toBeTruthy();
+    expect(screen.getAllByText('Cadd9').length).toBeGreaterThan(0);
+  });
+
   it('exposes add-to-Harmony actions for analyzed candidates', async () => {
     const { ResultCard } = await import('./App');
     const add = vi.fn();

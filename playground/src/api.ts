@@ -9,6 +9,31 @@ import type { ApiEntry } from './registry';
 async function* streamSource() { for (const event of DEFAULT_EVENTS) yield event; yield { type: 'end' as const, tick: 480 }; }
 async function collect(value: AsyncIterable<unknown>): Promise<unknown[]> { const result: unknown[] = []; for await (const item of value) result.push(item); return result; }
 
+export type InvocationResult = { status: 'success'; value: unknown; diagnostics: unknown[] } | { status: 'error'; error: { name: string; message: string; code?: unknown; details?: unknown }; diagnostics: unknown[] };
+
+function diagnosticsFrom(value: unknown): unknown[] {
+  if (!value || typeof value !== 'object') return [];
+  const diagnostics = (value as { diagnostics?: unknown }).diagnostics;
+  return Array.isArray(diagnostics) ? diagnostics : [];
+}
+
+export function normalizeError(reason: unknown): InvocationResult {
+  if (reason instanceof Error) {
+    const record = reason as Error & { code?: unknown; details?: unknown; diagnostics?: unknown };
+    return { status: 'error', error: { name: record.name, message: record.message, ...(record.code !== undefined ? { code: record.code } : {}), ...(record.details !== undefined ? { details: record.details } : {}) }, diagnostics: Array.isArray(record.diagnostics) ? record.diagnostics : [] };
+  }
+  if (reason && typeof reason === 'object') {
+    const record = reason as { name?: unknown; message?: unknown; code?: unknown; details?: unknown; diagnostics?: unknown };
+    return { status: 'error', error: { name: typeof record.name === 'string' ? record.name : 'Error', message: typeof record.message === 'string' ? record.message : String(reason), ...(record.code !== undefined ? { code: record.code } : {}), ...(record.details !== undefined ? { details: record.details } : {}) }, diagnostics: Array.isArray(record.diagnostics) ? record.diagnostics : [] };
+  }
+  return { status: 'error', error: { name: 'Error', message: String(reason) }, diagnostics: [] };
+}
+
+export async function runInvocation(entry: ApiEntry, args: unknown[]): Promise<InvocationResult> {
+  try { const value = await invoke(entry, args); return { status: 'success', value, diagnostics: diagnosticsFrom(value) }; }
+  catch (reason) { return normalizeError(reason); }
+}
+
 export async function invoke(entry: ApiEntry, args: unknown[]): Promise<unknown> {
   const value = (runtimes[entry.module] as Record<string, unknown>)[entry.name];
   if (entry.kind === 'constant' || entry.kind === 'type') return value ?? { schema: entry.name, message: 'Type-only schema documented by the API explorer.' };
