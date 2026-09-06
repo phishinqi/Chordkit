@@ -238,6 +238,15 @@ describe('MIDI parsing, timing, and chord timeline segmentation', () => {
     }
   });
 
+  it('requires flush ticks to be non-negative safe integers', () => {
+    const tracker = new ActiveNoteTracker();
+    tracker.push(event('noteOn', 0, 0, { channel: 0, midi: 60, velocity: 100 }));
+    for (const endTick of [-1, 0.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1]) {
+      expect(() => tracker.flush(endTick)).toThrow(ChordInputError);
+    }
+    expect(() => tracker.flush(Number.MAX_SAFE_INTEGER)).not.toThrow();
+    expect(tracker.noteSpans[0]).toMatchObject({ startTick: 0, endTick: Number.MAX_SAFE_INTEGER });
+  });
   it('bounds timeline grid construction for impractically large ranges', () => {
     const span: NoteSpan = { track: 0, channel: 0, midi: 60, startTick: 0, endTick: Number.MAX_SAFE_INTEGER, velocity: 100, sustained: false };
     expect(() => buildTimeline([span])).toThrow(ChordInputError);

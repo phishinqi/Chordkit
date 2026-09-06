@@ -95,7 +95,8 @@ export class ActiveNoteTracker {
   }
 
   flush(endTick = this.lastTick): NoteSpan[] {
-    if (!Number.isInteger(endTick) || endTick < this.lastTick) throw new ChordInputError(`Flush endTick must be >= last event tick (${this.lastTick})`);
+    requireInteger(endTick, 'Flush endTick');
+    if (endTick < this.lastTick) throw new ChordInputError(`Flush endTick must be >= last event tick (${this.lastTick})`);
     for (const queue of this.pending.values()) for (const pending of queue) this.close(pending, endTick, false, 'file-end');
     for (const queue of this.deferred.values()) for (const pending of queue) this.close(pending, endTick, true, 'file-end');
     this.pending.clear();
