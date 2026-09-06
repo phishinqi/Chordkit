@@ -1,8 +1,12 @@
-import type { NormalizedNote } from '../types';
+import { normalizePitchClass } from '../normalize';
 
-export function inversionIndex(rootPitchClass: number, notes: readonly NormalizedNote[]): number {
-  const bass = notes[0];
-  if (!bass || bass.pitchClass === rootPitchClass) return 0;
-  const unique = [...new Set(notes.map((note) => note.pitchClass))];
-  return Math.max(1, unique.indexOf(bass.pitchClass) + 1);
+export function inversionIndex(
+  rootPitchClass: number,
+  bassPitchClass: number | null,
+  templateIntervals: readonly number[],
+): number {
+  if (bassPitchClass === null || bassPitchClass === rootPitchClass) return 0;
+  const degrees = [...new Set(templateIntervals.map(normalizePitchClass))];
+  const degreeIndex = degrees.indexOf(normalizePitchClass(bassPitchClass - rootPitchClass));
+  return degreeIndex > 0 ? degreeIndex : 1;
 }

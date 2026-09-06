@@ -62,6 +62,21 @@ describe('Harmony analysis', () => {
     expect(input[0]).toEqual({ input: 'C', id: 'c', start: 0, end: 480 });
   });
 
+  it('renders degree-correct seventh-chord inversions as figured bass', () => {
+    const inversions = [
+      { notes: ['B2', 'D3', 'F3', 'G3'], rendering: 'V65' },
+      { notes: ['D3', 'F3', 'G3', 'B3'], rendering: 'V43' },
+      { notes: ['F3', 'G3', 'B3', 'D4'], rendering: 'V42' },
+    ];
+    for (const { notes, rendering } of inversions) {
+      expect(analyzeHarmony(notes, { key: { tonic: 'C', mode: 'major' } })
+        .primary?.renderings.analysis).toBe(rendering);
+    }
+    expect(analyzeHarmony(['E2', 'G2', 'C3'], {
+      key: { tonic: 'C', mode: 'major' },
+    }).primary?.roman.figuredBass).toBe('6');
+  });
+
   it('recognizes Neapolitan and augmented-sixth pitch evidence in minor contexts', () => {
     expect(analyzeHarmony('Eb/G', { key: { tonic: 'D', mode: 'harmonicMinor' } }).primary?.roman.special).toBe('N');
     const augmented = analyzeHarmony(['Ab3', 'C4', 'F#4'], { key: { tonic: 'C', mode: 'naturalMinor' } });

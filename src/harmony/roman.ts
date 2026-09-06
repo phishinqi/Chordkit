@@ -27,8 +27,9 @@ function degreeFor(context: TonalContext, pitchClass: number): { degree: number;
 
 function figuredBass(candidate: ChordCandidate): string | undefined {
   if (candidate.evidence.inversion === 0) return undefined;
-  const count = new Set(candidate.intervalAnalysis.pitchClasses).size;
-  if (count >= 4) return candidate.evidence.inversion === 1 ? '65' : candidate.evidence.inversion === 2 ? '43' : '42';
+  const hasSeventh = /^(?:maj|mMaj|m|dim|aug)?(?:7|9|11|13)/.test(candidate.quality)
+    || candidate.quality === 'm7b5';
+  if (hasSeventh) return candidate.evidence.inversion === 1 ? '65' : candidate.evidence.inversion === 2 ? '43' : '42';
   return '6';
 }
 
