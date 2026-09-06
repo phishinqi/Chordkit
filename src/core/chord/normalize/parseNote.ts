@@ -1,7 +1,7 @@
 import { ChordInputError, type NormalizedNote, type RegisteredNoteInput } from '../types';
 import { normalizePitchClass, pitchClassFromName } from './pitchClass';
 
-const NOTE_PATTERN = /^([A-Ga-g])([#b]?)(-?\d+)$/;
+const NOTE_PATTERN = /^([A-Ga-g])((?:#{1,}|b{1,})?)(-?\d+)$/;
 
 export function parseNote(input: RegisteredNoteInput): NormalizedNote {
   if (typeof input === 'number') {
@@ -16,9 +16,11 @@ export function parseNote(input: RegisteredNoteInput): NormalizedNote {
   const letter = match[1]!;
   const accidental = match[2]!;
   const octaveText = match[3]!;
-  const pitchClass = pitchClassFromName(`${letter.toUpperCase()}${accidental}`);
+  const naturalPitchClass = pitchClassFromName(letter);
+  const accidentalOffset = accidental.startsWith('#') ? accidental.length : -accidental.length;
+  const pitchClass = normalizePitchClass(naturalPitchClass + accidentalOffset);
   const octave = Number.parseInt(octaveText, 10);
-  const midi = (octave + 1) * 12 + pitchClass;
+  const midi = (octave + 1) * 12 + naturalPitchClass + accidentalOffset;
   if (midi < 0 || midi > 127) throw new ChordInputError(`Note is outside the MIDI range 0..127: ${input}`);
   return { midi, pitchClass, octave, source: input };
 }

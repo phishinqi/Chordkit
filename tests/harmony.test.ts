@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { analyzeHarmony, analyzeProgression, analyzeHarmonicTimeline, analyzeHarmonicEventSnapshots, analyzeStableHarmonicEventStream, inferKeys, parseChordSymbol } from '../src/harmony';
-import { analyzeChord, buildTimeline, type NoteSpan } from '../src';
+import { ChordInputError, analyzeChord, buildTimeline, type NoteSpan } from '../src';
 
 describe('Harmony analysis', () => {
   it('parses common and permissive chord symbols into registered-note analysis', () => {
@@ -35,6 +35,31 @@ describe('Harmony analysis', () => {
     const progression = analyzeProgression(['Dm7', 'G7', 'Cmaj7'], { modes: ['major'] });
     expect(progression.globalContext.tonicPitchClass).toBe(0);
     expect(progression.events.map((event) => event.analysis.primary?.renderings.analysis)).toEqual(['ii7', 'V7', 'Imaj7']);
+  });
+
+  it('rejects malformed progression inputs with typed errors and validates event ranges', () => {
+    const invalidInputs: unknown[] = [null, undefined, 42, {}, 'Cmaj7'];
+    for (const input of invalidInputs) {
+      expect(() => analyzeProgression(input as never)).toThrow(ChordInputError);
+      expect(() => inferKeys(input as never)).toThrow(ChordInputError);
+    }
+    for (const item of [null, undefined, 42, {}, { input: null }]) {
+      expect(() => analyzeProgression([item] as never)).toThrow(ChordInputError);
+    }
+    for (const range of [
+      { start: -1 },
+      { start: 0.5 },
+      { end: Number.NaN },
+      { end: Number.POSITIVE_INFINITY },
+      { end: Number.MAX_SAFE_INTEGER + 1 },
+      { start: 10, end: 9 },
+    ]) {
+      expect(() => analyzeProgression([{ input: 'C', ...range }] as never)).toThrow(ChordInputError);
+    }
+    const input = [{ input: 'C', id: 'c', start: 0, end: 480 }];
+    const result = analyzeProgression(input);
+    expect(result.events[0]).toMatchObject({ id: 'c', start: 0, end: 480 });
+    expect(input[0]).toEqual({ input: 'C', id: 'c', start: 0, end: 480 });
   });
 
   it('recognizes Neapolitan and augmented-sixth pitch evidence in minor contexts', () => {

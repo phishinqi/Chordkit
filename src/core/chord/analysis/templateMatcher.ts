@@ -14,10 +14,17 @@ function sameIntervals(actual: readonly number[], expected: readonly number[]): 
 
 function registeredIntervalsMatch(actual: readonly number[], expected: readonly number[]): boolean {
   const actualSimple = actual.filter((interval) => interval < 12).map(pitchClass).sort((a, b) => a - b);
-  const actualCompound = actual.filter((interval) => interval >= 12).sort((a, b) => a - b);
+  const actualCompound = actual.filter((interval) => interval >= 12);
   const expectedSimple = expected.filter((interval) => interval < 12).sort((a, b) => a - b);
-  const expectedCompound = expected.filter((interval) => interval >= 12).sort((a, b) => a - b);
-  return sameIntervals(actualSimple, expectedSimple) && expectedCompound.every((interval) => actualCompound.includes(interval));
+  const expectedCompound = expected.filter((interval) => interval >= 12);
+  if (!sameIntervals(actualSimple, expectedSimple)) return false;
+  const unmatched = [...actualCompound];
+  return expectedCompound.every((interval) => {
+    const index = unmatched.findIndex((actualInterval) => pitchClass(actualInterval) === pitchClass(interval));
+    if (index < 0) return false;
+    unmatched.splice(index, 1);
+    return true;
+  });
 }
 
 export function matchTemplates(
@@ -35,10 +42,9 @@ export function matchTemplates(
 }
 
 export function matchPitchClassTemplates(intervals: readonly number[], templates: readonly ChordTemplate[]): ChordTemplate[] {
-  return templates.filter((template) =>
-    template.registerRequirement !== 'compound'
-    && template.intervals.every((interval) => interval < 12)
-    && template.intervals.length === intervals.length
-    && template.intervals.every((interval, index) => interval === intervals[index]),
-  );
+  return templates.filter((template) => {
+    const expected = foldDuplicatePitchClasses(template.intervals);
+    return sameIntervals(foldDuplicatePitchClasses(intervals), expected)
+      && template.intervals.length === intervals.length;
+  });
 }

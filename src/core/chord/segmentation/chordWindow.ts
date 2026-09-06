@@ -3,6 +3,8 @@ import { detectOnsetClusters } from './onsetDetector';
 import { timingChangeTicks } from './tempoMap';
 import type { BoundaryReason, ChordWindow, MidiDiagnostic, NoteSpan, ResolvedTimelineOptions, TimelineScope, TimingDefinition } from './types';
 
+const MAX_GRID_BOUNDARIES = 100_000;
+
 function belongsToScope(span: NoteSpan, scope: TimelineScope, scopeKey: number | null): boolean {
   if (scope === 'global') return true;
   if (scopeKey === null) throw new ChordInputError(`${scope} scope requires scopeKey`);
@@ -43,7 +45,12 @@ export function buildChordWindows(
   };
   for (const cluster of clusters) addBoundary(cluster.tick, 'onset-cluster');
   const gridTicks = options.gridBeats * timing.ppq;
-  for (let tick = Math.ceil(startTick / gridTicks) * gridTicks; tick < endTick; tick += gridTicks) addBoundary(Math.round(tick), 'beat-grid');
+  const firstGridTick = Math.ceil(startTick / gridTicks) * gridTicks;
+  const estimatedGridBoundaries = firstGridTick >= endTick ? 0 : Math.ceil((endTick - firstGridTick) / gridTicks);
+  if (!Number.isSafeInteger(estimatedGridBoundaries) || estimatedGridBoundaries > MAX_GRID_BOUNDARIES) {
+    throw new ChordInputError(`Timeline grid would create too many boundaries: ${estimatedGridBoundaries}`);
+  }
+  for (let tick = firstGridTick; tick < endTick; tick += gridTicks) addBoundary(Math.round(tick), 'beat-grid');
   for (const change of timingChangeTicks(timing)) addBoundary(change.tick, change.reason);
   const boundaries = [startTick, ...[...boundaryMap.keys()].sort((a, b) => a - b), endTick];
   const raw: ChordWindow[] = [];
