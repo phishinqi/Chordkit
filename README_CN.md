@@ -49,12 +49,14 @@ console.log(suspended.primary?.name); // Csus2
 // 分析无八度信息的音高类
 const pitchClasses = analyzePitchClasses([0, 2, 4, 7]);
 console.log(pitchClasses.inputMode); // pitch-class
-// 在未提供音区信息之前，复音程名称（如 add9/11 等）保持不可用状态
+// 可以出现约定俗成的扩展和弦名称，但输入本身不能证明复音程的音区证据。
 console.log(pitchClasses.ambiguity);
 
 ```
 
 `analyzeChord()` 仅接收带音区信息的输入：`0` 到 `127` 的 MIDI 整数，或带有八度标记的音符字符串。当无法获取八度信息时，请使用 `analyzePitchClasses()`；它会主动避免得出无法由音高类单独证明的复音程语义。
+
+对于依赖音区的 Voicing，`analyzeChord(['C4', 'F4', 'Bb4', 'Eb5'])` 只有在音符构成逐级向上的原位纯四度堆叠时才识别为 `Cquartal`；同理，`analyzeChord(['C3', 'G3', 'D4', 'A4'])` 才识别为 `Cquintal`。转位、跨八度展开或仅有音高类的输入仍保留普通候选，不会得到这类标签。`sus4(add6)` 是可由音高类确定的质量；`sus2(add9)` 则必须有已登记的复 9 度证据：`['C3', 'D3', 'G3', 'D4']` 为 `Csus2(add9)`，而简单的 `['C4', 'D4', 'G4']` 为 `Csus2`。
 
 ### 核心 API
 

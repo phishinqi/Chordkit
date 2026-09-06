@@ -85,6 +85,94 @@ describe('register-aware chord engine', () => {
     expect(result.ambiguity).toBe('medium');
   });
 
+  it('recognizes literal registered fourth and fifth stacks without collapsing their alternatives', () => {
+    const quartal = analyzeChord(['C4', 'F4', 'Bb4', 'Eb5']);
+    expect(quartal.primary).toMatchObject({
+      name: 'Cquartal',
+      quality: 'quartal',
+      evidence: { templateId: 'quartal-4', match: 'exact' },
+    });
+    expect(quartal.alternatives.map((candidate) => candidate.name)).toContain('F7sus4/C');
+    expect(quartal.ambiguity).toBe('low');
+
+    const transposedQuartal = analyzeChord(['D4', 'G4', 'C5', 'F5']);
+    expect(transposedQuartal.primary).toMatchObject({
+      rootPitchClass: 2,
+      quality: 'quartal',
+      evidence: { templateId: 'quartal-4', match: 'exact' },
+    });
+
+    const quintal = analyzeChord(['C3', 'G3', 'D4', 'A4']);
+    expect(quintal.primary).toMatchObject({
+      name: 'Cquintal',
+      quality: 'quintal',
+      evidence: { templateId: 'quintal-4', match: 'exact' },
+    });
+    expect(quintal.alternatives.map((candidate) => candidate.name)).toContain('D7sus4/C');
+    expect(quintal.ambiguity).toBe('low');
+  });
+
+  it('limits literal stack labels to their registered root-position evidence', () => {
+    const spread = analyzeChord(['C4', 'F4', 'Bb4', 'Eb4']);
+    expect(spread.candidates.some((candidate) => candidate.evidence.templateId === 'quartal-4')).toBe(false);
+
+    const invertedFifthStack = analyzeChord(['G3', 'D4', 'A4', 'C5']);
+    expect(invertedFifthStack.candidates.some((candidate) => (
+      candidate.evidence.templateId === 'quartal-4' || candidate.evidence.templateId === 'quintal-4'
+    ))).toBe(false);
+
+    const pitchClasses = analyzePitchClasses([0, 3, 5, 10]);
+    expect(pitchClasses.candidates.some((candidate) => candidate.evidence.templateId === 'quartal-4')).toBe(false);
+    expect(pitchClasses.candidates.every((candidate) => candidate.rootMidi === null)).toBe(true);
+
+    const customLiteralStack = analyzePitchClasses([0, 5], {
+      customTemplates: [{
+        id: 'custom-literal-fourth',
+        quality: 'literal4',
+        intervals: [0, 5],
+        family: 'custom',
+        registerRequirement: 'literal-stack',
+      }],
+    });
+    expect(customLiteralStack.candidates.some(
+      (candidate) => candidate.evidence.templateId === 'custom-literal-fourth',
+    )).toBe(false);
+  });
+
+  it('recognizes documented suspended-add structures without losing ordinary sus ambiguity', () => {
+    const sus4Add6 = analyzeChord(['C4', 'F4', 'G4', 'A4']);
+    expect(sus4Add6.primary).toMatchObject({
+      name: 'Csus4(add6)',
+      quality: 'sus4(add6)',
+      evidence: { templateId: 'sus4-add6', match: 'exact' },
+    });
+    expect(sus4Add6.alternatives.map((candidate) => candidate.name)).toContain('Fsus2add3 | C');
+
+    const sus2Add9 = analyzeChord(['C3', 'D3', 'G3', 'D4']);
+    expect(sus2Add9.primary).toMatchObject({
+      name: 'Csus2(add9)',
+      quality: 'sus2(add9)',
+      extensions: [9],
+      evidence: { templateId: 'sus2-add9', match: 'exact' },
+    });
+    expect(sus2Add9.alternatives.map((candidate) => candidate.name)).toContain('Csus2');
+    expect(sus2Add9.candidates.some((candidate) => candidate.evidence.templateId === 'quartal-4')).toBe(false);
+    expect(sus2Add9.ambiguity).toBe('high');
+
+    const ordinarySus2 = analyzeChord(['C4', 'D4', 'G4']);
+    expect(ordinarySus2.primary?.name).toBe('Csus2');
+    expect(ordinarySus2.candidates.some((candidate) => candidate.evidence.templateId === 'sus2-add9')).toBe(false);
+
+    const pitchClassSus4Add6 = analyzePitchClasses([0, 5, 7, 9]);
+    expect(pitchClassSus4Add6.primary).toMatchObject({
+      name: 'Csus4(add6)',
+      evidence: { templateId: 'sus4-add6', match: 'pitch-class' },
+    });
+    const pitchClassSus2 = analyzePitchClasses([0, 2, 7]);
+    expect(pitchClassSus2.primary?.name).toBe('Csus2');
+    expect(pitchClassSus2.candidates.some((candidate) => candidate.evidence.templateId === 'sus2-add9')).toBe(false);
+  });
+
   it('validates and ranks typed custom templates with the built-in registry', () => {
     const result = analyzeChord(['C4', 'F#4'], {
       customTemplates: [{ id: 'custom-tritone', quality: 'tritone', intervals: [0, 6], family: 'custom' }],

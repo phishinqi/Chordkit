@@ -11,6 +11,7 @@ function omissionIntervalsMatch(actual: readonly number[], expected: readonly nu
 export function detectOmissions(intervals: readonly number[], templates: readonly ChordTemplate[]): OmissionMatch[] {
   const matches: OmissionMatch[] = [];
   for (const template of templates) {
+    if (template.registerRequirement === 'literal-stack') continue;
     const withoutFifth = template.intervals.filter((value) => value % 12 !== 7);
     if (withoutFifth.length < template.intervals.length && omissionIntervalsMatch(intervals, withoutFifth)) matches.push({ template, omissions: ['omit5'] });
     const withoutThird = template.intervals.filter((value) => value % 12 !== 3 && value % 12 !== 4);

@@ -14,6 +14,7 @@ export const EXTENDED_TEMPLATES: ChordTemplate[] = [
   { id: '9', quality: '9', intervals: [0, 4, 7, 10, 14], family: 'extended', extensions: [9], registerRequirement: 'compound' },
   { id: 'mMaj9', quality: 'mMaj9', intervals: [0, 3, 7, 11, 14], family: 'extended', extensions: [9], registerRequirement: 'compound' },
   { id: '9sus4', quality: '9sus4', intervals: [0, 5, 7, 10, 14], family: 'extended', extensions: [9], registerRequirement: 'compound' },
+  { id: 'sus2-add9', quality: 'sus2(add9)', intervals: [0, 2, 7, 14], family: 'extended', extensions: [9], registerRequirement: 'compound' },
   { id: 'maj11', quality: 'maj11', intervals: [0, 4, 7, 11, 14, 17], family: 'extended', extensions: [9, 11], registerRequirement: 'compound' },
   { id: 'm11', quality: 'm11', intervals: [0, 3, 7, 10, 14, 17], family: 'extended', extensions: [9, 11], registerRequirement: 'compound' },
   { id: 'm11-no9', quality: 'm11(no9)', intervals: [0, 3, 7, 10, 17], family: 'extended', extensions: [11], registerRequirement: 'compound' },

@@ -1,5 +1,11 @@
 export type ChordTemplateFamily = 'basic' | 'seventh' | 'extended' | 'altered' | 'custom';
-export type RegisterRequirement = 'any' | 'compound';
+export type RegisterRequirement = 'any' | 'compound' | 'literal-stack';
+
+const REGISTER_REQUIREMENTS = new Set<RegisterRequirement>([
+  'any',
+  'compound',
+  'literal-stack',
+]);
 
 export interface ChordTemplate {
   id: string;
@@ -11,22 +17,26 @@ export interface ChordTemplate {
   legacyAliases?: string[];
   avoidIntervals?: number[];
   registerRequirement?: RegisterRequirement;
+  pitchClassEligible?: boolean;
 }
 
 export { BASIC_TEMPLATES } from './basic';
 export { SEVENTH_TEMPLATES } from './seventh';
 export { EXTENDED_TEMPLATES } from './extended';
 export { ALTERED_TEMPLATES } from './altered';
+export { VOICING_TEMPLATES } from './voicing';
 
 import { ALTERED_TEMPLATES } from './altered';
 import { BASIC_TEMPLATES } from './basic';
 import { EXTENDED_TEMPLATES } from './extended';
 import { SEVENTH_TEMPLATES } from './seventh';
+import { VOICING_TEMPLATES } from './voicing';
 
 export const CHORD_TEMPLATES: ChordTemplate[] = [
   ...EXTENDED_TEMPLATES,
   ...ALTERED_TEMPLATES,
   ...SEVENTH_TEMPLATES,
+  ...VOICING_TEMPLATES,
   ...BASIC_TEMPLATES,
 ];
 
@@ -42,6 +52,8 @@ export function validateCustomTemplates(customTemplates: readonly ChordTemplate[
     ids.add(template.id);
     if (!template.quality?.trim()) throw new Error(`Custom template requires a quality: ${template.id}`);
     if (!Array.isArray(template.intervals) || !template.intervals.length || template.intervals.some((value) => !Number.isInteger(value) || value < 0)) throw new Error(`Invalid intervals for custom template: ${template.id}`);
+    if (template.pitchClassEligible !== undefined && typeof template.pitchClassEligible !== 'boolean') throw new Error(`Invalid pitch-class eligibility for custom template: ${template.id}`);
+    if (template.registerRequirement !== undefined && !REGISTER_REQUIREMENTS.has(template.registerRequirement)) throw new Error(`Invalid register requirement for custom template: ${template.id}`);
     const intervals = [...new Set(template.intervals)].sort((a, b) => a - b);
     if (intervals[0] !== 0) throw new Error(`Custom template must include root interval 0: ${template.id}`);
     return { ...template, intervals, family: template.family ?? 'custom', registerRequirement: template.registerRequirement ?? (intervals.some((value) => value >= 12) ? 'compound' : 'any') };
