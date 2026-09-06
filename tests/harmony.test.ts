@@ -53,6 +53,49 @@ describe('Harmony analysis', () => {
     expect(result.events.every((event) => event.localContext?.source === 'manual')).toBe(true);
     expect(result.tonalSegments).toHaveLength(1);
   });
+
+  it('preserves exact add and omit modifier semantics', () => {
+    const cases = [
+      { symbol: 'Cadd2', quality: 'add2', intervals: [0, 2, 4, 7] },
+      { symbol: 'Cadd6', quality: 'add6', intervals: [0, 4, 7, 9] },
+      { symbol: 'Cadd13', quality: 'add13', intervals: [0, 4, 7, 21] },
+      { symbol: 'C7add9', quality: '7add9', intervals: [0, 4, 7, 10, 14] },
+      { symbol: 'C7add13', quality: '7add13', intervals: [0, 4, 7, 10, 21] },
+      { symbol: 'C9(omit9)', quality: '9(no9)', intervals: [0, 4, 7, 10] },
+      { symbol: 'C11(omit11)', quality: '11(no11)', intervals: [0, 4, 7, 10, 14] },
+      { symbol: 'C13(omit13)', quality: '13(no13)', intervals: [0, 4, 7, 10, 14, 17] },
+    ] as const;
+
+    for (const { symbol, quality, intervals } of cases) {
+      const parsed = parseChordSymbol(symbol);
+      expect(parsed.quality, symbol).toBe(quality);
+      expect(parsed.intervals, symbol).toEqual(intervals);
+      expect(parsed.analysis.primary?.name, symbol).toBe(`C${quality}`);
+      expect(parsed.analysis.primary?.rootPitchClass, symbol).toBe(0);
+      expect(parsed.analysis.primary?.quality, symbol).toBe(quality);
+    }
+
+    expect(parseChordSymbol('C9(omit9)').intervals).not.toContain(14);
+    expect(parseChordSymbol('C11(omit11)').intervals).not.toContain(17);
+    expect(parseChordSymbol('C13(omit13)').intervals).not.toContain(21);
+  });
+
+  it('keeps declared extended symbols primary while retaining alternatives', () => {
+    for (const symbol of ['C13', 'Cmaj13'] as const) {
+      const parsed = parseChordSymbol(symbol);
+      expect(parsed.analysis.primary?.root).toBe('C');
+      expect(parsed.analysis.primary?.quality).toBe(parsed.quality);
+      expect(parsed.analysis.primary?.name).toBe(symbol);
+      expect(parsed.analysis.alternatives.length).toBeGreaterThan(0);
+      expect(parsed.analysis.candidates[0]?.evidence.templateId).toMatch(/^symbol-C-/);
+    }
+  });
+
+  it('rejects modifiers that the symbol grammar cannot model', () => {
+    for (const symbol of ['Cadd7', 'Cadd10', 'C9(omit10)', 'C7add9add9']) {
+      expect(() => parseChordSymbol(symbol), symbol).toThrow(ChordInputError);
+    }
+  });
   it('renders diatonic, applied-dominant, and tritone-substitution Roman forms', () => {
     expect(analyzeHarmony('Cmaj7', { key: { tonic: 'C', mode: 'major' } }).primary?.renderings.analysis).toMatch(/^I/);
     expect(analyzeHarmony('D7', { key: { tonic: 'C', mode: 'major' } }).primary?.renderings.analysis).toBe('V/V');

@@ -43,7 +43,7 @@ effect even when `auto` is `false`.
 
 `analyzeHarmony()` accepts registered notes, an existing `ChordAnalysisResult`, or a chord symbol. `analyzeProgression()` accepts any mix of those forms plus structured `ProgressionEvent` entries.
 
-`parseChordSymbol()` supports `standard` and `permissive` grammar modes. Common major/minor/diminished/augmented/sus/add forms, 6/7/9/11/13, alterations, omit/no, slash bass, and `Upper | Lower` polychords are supported. Unmappable free text throws `ChordInputError` instead of guessing.
+`parseChordSymbol()` supports `standard` and `permissive` grammar modes. Common major/minor/diminished/augmented/sus/add forms, 6/7/9/11/13, alterations, omit/no, slash bass, and `Upper | Lower` polychords are supported. Additions (`add2`, `add4`, `add6`, `add9`, `add11`, and `add13`) and omissions (`no`/`omit` 3, 5, 9, 11, and 13) are preserved in the parsed quality and interval set; unsupported modifiers throw `ChordInputError` instead of being ignored. Unmappable free text also throws `ChordInputError` instead of guessing.
 
 ## Tonal contexts and Roman AST
 
