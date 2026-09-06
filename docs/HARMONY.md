@@ -32,7 +32,12 @@ For automatic progressions, `globalContext` is the opening/home-key anchor. When
 the sequence contains a supported modulation, `tonalSegments` carries the
 piecewise contexts and each event's `localContext` comes from its segment. A
 short applied dominant or leading-tone chord is not promoted to a standalone
-key segment; it remains functional in the surrounding context.
+key segment; it remains functional in the surrounding context. Automatic
+inference is enabled by default and can be disabled with `auto: false`. Without
+a supplied `key`, that mode returns an explicit unknown result: `globalContext`
+and each event's `localContext` are `null`, `keyCandidates` and `tonalSegments`
+are empty, and no Roman numeral is fabricated. A supplied manual key remains in
+effect even when `auto` is `false`.
 
 ## Inputs
 

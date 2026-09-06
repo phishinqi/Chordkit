@@ -285,7 +285,7 @@ Built-in profiles are `general`, `pop`, `jazz`, and `classical`. Custom strategi
 import { analyzeProgression } from '@phishinqi/chordkit/harmony';
 
 const result = analyzeProgression(['Dm7', 'G7', 'Cmaj7'], { auto: true, profile: 'jazz' });
-console.log(result.globalContext.label);
+console.log(result.globalContext?.label ?? 'Unknown context');
 ```
 
 See [Harmony analysis](docs/HARMONY.md).

@@ -262,7 +262,7 @@ const timeline = engine.analyze(960);
 import { analyzeProgression } from '@phishinqi/chordkit/harmony';
 
 const result = analyzeProgression(['Dm7', 'G7', 'Cmaj7'], { auto: true, profile: 'jazz' });
-console.log(result.globalContext.label);
+console.log(result.globalContext?.label ?? '未知调性');
 ```
 
 详见 [Harmony 分析](docs/HARMONY.md)。

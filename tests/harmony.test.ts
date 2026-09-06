@@ -19,6 +19,40 @@ describe('Harmony analysis', () => {
     expect(() => parseChordSymbol('C what is this')).toThrow();
   });
 
+  it('returns explicit unknown results when automatic context is disabled', () => {
+    const emptyHarmony = analyzeHarmony([]);
+    expect(emptyHarmony.context).toBeNull();
+    expect(emptyHarmony.keyCandidates).toEqual([]);
+    expect(emptyHarmony.primary).toBeNull();
+
+    const noAutoHarmony = analyzeHarmony('C', { auto: false });
+    expect(noAutoHarmony.context).toBeNull();
+    expect(noAutoHarmony.keyCandidates).toEqual([]);
+    expect(noAutoHarmony.primary).toBeNull();
+
+    const emptyProgression = analyzeProgression([]);
+    expect(emptyProgression.globalContext).toBeNull();
+    expect(emptyProgression.keyCandidates).toEqual([]);
+    expect(emptyProgression.events).toEqual([]);
+    expect(emptyProgression.tonalSegments).toEqual([]);
+
+    const noAutoProgression = analyzeProgression(['C', 'G'], { auto: false });
+    expect(noAutoProgression.globalContext).toBeNull();
+    expect(noAutoProgression.keyCandidates).toEqual([]);
+    expect(noAutoProgression.events.map((event) => event.localContext)).toEqual([null, null]);
+    expect(noAutoProgression.tonalSegments).toEqual([]);
+    expect(noAutoProgression.events.every((event) => event.analysis.context === null && event.analysis.primary === null)).toBe(true);
+
+    expect(inferKeys([])).toEqual([]);
+    expect(inferKeys(['C'], { auto: false })).toEqual([]);
+  });
+
+  it('keeps a supplied manual key even when automatic mode is disabled', () => {
+    const result = analyzeProgression(['C', 'G7'], { auto: false, key: { tonic: 'C', mode: 'major' } });
+    expect(result.globalContext?.label).toBe('C major');
+    expect(result.events.every((event) => event.localContext?.source === 'manual')).toBe(true);
+    expect(result.tonalSegments).toHaveLength(1);
+  });
   it('renders diatonic, applied-dominant, and tritone-substitution Roman forms', () => {
     expect(analyzeHarmony('Cmaj7', { key: { tonic: 'C', mode: 'major' } }).primary?.renderings.analysis).toMatch(/^I/);
     expect(analyzeHarmony('D7', { key: { tonic: 'C', mode: 'major' } }).primary?.renderings.analysis).toBe('V/V');
@@ -33,7 +67,7 @@ describe('Harmony analysis', () => {
     const allModeKeys = inferKeys(['Dm7', 'G7', 'Cmaj7']);
     expect(allModeKeys[0]?.context.label).toBe('C major');
     const progression = analyzeProgression(['Dm7', 'G7', 'Cmaj7'], { modes: ['major'] });
-    expect(progression.globalContext.tonicPitchClass).toBe(0);
+    expect(progression.globalContext?.tonicPitchClass).toBe(0);
     expect(progression.events.map((event) => event.analysis.primary?.renderings.analysis)).toEqual(['ii7', 'V7', 'Imaj7']);
   });
 
@@ -90,7 +124,7 @@ describe('Harmony analysis', () => {
 
   it('keeps a tonic-anchored A-minor cycle in one natural-minor context', () => {
     const progression = analyzeProgression(['Am', 'Dm', 'G', 'C', 'F', 'Bdim', 'E7', 'Am']);
-    expect(progression.globalContext.label).toBe('A naturalMinor');
+    expect(progression.globalContext?.label).toBe('A naturalMinor');
     expect(progression.events.every((event) => !event.modulation)).toBe(true);
     // Dm is iv in A natural minor; Bdim is the diatonic ii degree.
     expect(progression.events.map((event) => event.analysis.primary?.renderings.analysis)).toEqual(['i', 'iv', 'VII', 'III', 'VI', 'ii°', 'V7', 'i']);
@@ -99,14 +133,14 @@ describe('Harmony analysis', () => {
 
   it('detects a C-to-Db modulation as two supported tonal segments', () => {
     const progression = analyzeProgression(['C', 'F', 'G7', 'Ab7', 'Db', 'Gbm', 'Db']);
-    expect(progression.globalContext.label).toBe('C major');
+    expect(progression.globalContext?.label).toBe('C major');
     expect(progression.tonalSegments.map((segment) => [segment.startIndex, segment.endIndex, segment.context.label])).toEqual([
       [0, 2, 'C major'],
       [3, 6, 'Db major'],
     ]);
     expect(progression.events.map((event) => event.analysis.primary?.renderings.analysis)).toEqual(['I', 'IV', 'V7', 'V7', 'I', 'iv', 'I']);
-    expect(progression.events.map((event) => event.localContext.label)).not.toContain('Gb major');
-    expect(progression.events.map((event) => event.localContext.label)).not.toContain('F lydian');
+    expect(progression.events.map((event) => event.localContext?.label)).not.toContain('Gb major');
+    expect(progression.events.map((event) => event.localContext?.label)).not.toContain('F lydian');
   });
 
   it('assigns deterministic voices and reports unknown NCT evidence rather than inventing a label', () => {

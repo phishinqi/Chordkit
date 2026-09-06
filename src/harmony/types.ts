@@ -91,6 +91,13 @@ export interface ProgressionEvent {
   chord?: ChordAnalysisResult;
 }
 
+export interface HarmonyProgressionResult {
+  globalContext: TonalContext | null;
+  keyCandidates: KeyCandidate[];
+  events: HarmonyProgressionEvent[];
+  tonalSegments: TonalSegment[];
+}
+
 export interface HarmonyProgressionEvent {
   index: number;
   id: string;
@@ -98,7 +105,7 @@ export interface HarmonyProgressionEvent {
   start: number | null;
   end: number | null;
   analysis: HarmonyAnalysis;
-  localContext: TonalContext;
+  localContext: TonalContext | null;
   modulation?: boolean;
 }
 
@@ -155,7 +162,7 @@ export interface HarmonicTimelineSegment {
 
 export interface HarmonicTimeline {
   timeline: ChordTimeline;
-  globalContext: TonalContext;
+  globalContext: TonalContext | null;
   keyCandidates: KeyCandidate[];
   tonalSegments: TonalSegment[];
   segments: HarmonicTimelineSegment[];
