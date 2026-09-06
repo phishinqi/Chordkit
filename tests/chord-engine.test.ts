@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ChordInputError, analyzeChord, analyzePitchClasses } from '../src';
+import { ChordInputError, analyzeChord, analyzePitchClasses, normalizeNotes } from '../src';
 import { CHORD_FIXTURES } from './fixtures/chords';
 
 describe('register-aware chord engine', () => {
@@ -41,7 +41,8 @@ describe('register-aware chord engine', () => {
   });
 
   it('allows octave-doubled compound tones when matching registered templates', () => {
-    expect(analyzeChord(['C3', 'E3', 'G3', 'D4', 'D5']).primary?.name).toBe('Cadd9');
+    expect(analyzeChord(['C3', 'E3', 'G3', 'D5']).primary?.name).toBe('Cadd9');
+    expect(analyzeChord(['C3', 'E3', 'G3', 'D5']).primary?.intervalAnalysis.absoluteIntervals).toContain(26);
   });
 
   it('matches omitted compound extensions by pitch class without collapsing exact compounds', () => {
@@ -55,11 +56,26 @@ describe('register-aware chord engine', () => {
     expect(result.candidates.every((candidate) => candidate.intervalAnalysis.compoundIntervals.length === 0)).toBe(true);
   });
 
-  it('returns an explicit ambiguous pitch-class analysis without extension claims', () => {
+  it('represents common extended pitch sets without register claims', () => {
+    const fixtures = [
+      { input: [0, 2, 4, 7, 10], name: 'C9' },
+      { input: [0, 2, 4, 5, 7, 10], name: 'C11' },
+      { input: [0, 2, 4, 7, 9, 10], name: 'C13' },
+      { input: [0, 2, 3, 7, 10], name: 'Cm9' },
+    ];
+    for (const fixture of fixtures) {
+      const result = analyzePitchClasses(fixture.input);
+      expect(result.primary?.name).toBe(fixture.name);
+      expect(result.primary?.rootMidi).toBeNull();
+      expect(result.primary?.intervalAnalysis.compoundIntervals).toEqual([]);
+    }
+  });
+  it('represents Cadd9 in pitch-class analysis without register claims', () => {
     const result = analyzePitchClasses([0, 2, 4, 7]);
     expect(result.inputMode).toBe('pitch-class');
-    expect(result.ambiguity).toBe('none');
-    expect(result.primary).toBeNull();
+    expect(result.primary?.name).toBe('Cadd9');
+    expect(result.primary?.rootMidi).toBeNull();
+    expect(result.primary?.intervalAnalysis.compoundIntervals).toEqual([]);
   });
 
   it('represents C6 and Am7/C as an ordered ambiguity', () => {
@@ -82,11 +98,28 @@ describe('register-aware chord engine', () => {
     })).toThrow(ChordInputError);
   });
 
+  it('accepts repeated accidentals and preserves their source spelling', () => {
+    expect(analyzeChord(['Bbb4', 'Dbb5', 'Fbb5']).primary?.intervalAnalysis.pitchClasses).toEqual([0, 3, 6]);
+    expect(normalizeNotes(['E##4', 'G##4', 'B##4']).map((note) => note.pitchClass)).toEqual([6, 9, 1]);
+    expect(analyzeChord(['E##4', 'G##4', 'B##4'], { spelling: { preserveSource: true } }).primary?.root).toBe('E##');
+    expect(() => analyzeChord(['C#b4'])).toThrow(ChordInputError);
+  });
   it('handles empty input and rejects invalid registered input', () => {
     expect(analyzeChord([]).primary).toBeNull();
     expect(() => analyzeChord(['C'])).toThrow(ChordInputError);
     expect(() => analyzeChord([128])).toThrow(ChordInputError);
     expect(() => analyzeChord([60.5])).toThrow(ChordInputError);
     expect(() => analyzePitchClasses([12])).toThrow(ChordInputError);
+  });
+
+  it('rejects non-array analyzer inputs and invalid pitch-class elements', () => {
+    for (const input of [null, undefined, 42, {}, 'C4']) {
+      expect(() => analyzeChord(input as never)).toThrow(ChordInputError);
+      expect(() => analyzePitchClasses(input as never)).toThrow(ChordInputError);
+    }
+    for (const input of [[null], [true], [{}]]) {
+      expect(() => analyzeChord(input as never)).toThrow(ChordInputError);
+      expect(() => analyzePitchClasses(input as never)).toThrow(ChordInputError);
+    }
   });
 });

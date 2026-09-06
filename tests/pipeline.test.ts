@@ -22,7 +22,14 @@ function vlq(value: number): number[] { const out = [value & 0x7f]; for (let res
 function endTrack(delta = 0): number[] { return [...vlq(delta), 0xff, 0x2f, 0]; }
 function noteOn(delta: number, midi: number, velocity = 100): number[] { return [...vlq(delta), 0x90, midi, velocity]; }
 function smf(track: number[]): Uint8Array {
-  return Uint8Array.from([...ascii('MThd'), ...u32(6), ...u16(0), ...u16(1), ...u16(480), ...ascii('MTrk'), ...u32(track.length), ...track]);
+  return smfWithHeader(0, 1, [track]);
+}
+
+function smfWithHeader(format: 0 | 1, trackCount: number, tracks: readonly number[][]): Uint8Array {
+  return Uint8Array.from([
+    ...ascii('MThd'), ...u32(6), ...u16(format), ...u16(trackCount), ...u16(480),
+    ...tracks.flatMap((track) => [...ascii('MTrk'), ...u32(track.length), ...track]),
+  ]);
 }
 
 describe('pipeline, strategies, caches, and streams', () => {
@@ -92,6 +99,17 @@ describe('pipeline, strategies, caches, and streams', () => {
     for await (const item of decodeMidiStream(oneByteChunks())) items.push(item);
     expect(items.at(-1)).toEqual({ type: 'end', tick: 480 });
     expect(items.filter((item) => item.type === 'noteOn')).toHaveLength(1);
+  });
+
+  it('rejects malformed source SMF track counts before decoding tracks', async () => {
+    for (const bytes of [
+      smfWithHeader(0, 0, []),
+      smfWithHeader(0, 2, [endTrack(), endTrack()]),
+      smfWithHeader(1, 0, []),
+    ]) {
+      const iterator = decodeMidiStream(source([bytes]))[Symbol.asyncIterator]();
+      await expect(iterator.next()).rejects.toThrow(/Invalid track count/);
+    }
   });
 
   it('rejects duplicate and decreasing terminal controls', async () => {

@@ -26,10 +26,35 @@ const PROFILE_WEIGHTS: Record<HarmonyProfile, Partial<typeof DEFAULT_HARMONY_WEI
 
 function resolvedWeights(options: HarmonyOptions = {}) { return { ...DEFAULT_HARMONY_WEIGHTS, ...PROFILE_WEIGHTS[options.profile ?? 'general'], ...options.weights }; }
 
+function isChordAnalysisResult(input: unknown): input is ChordAnalysisResult {
+  return typeof input === 'object'
+    && input !== null
+    && 'candidates' in input
+    && Array.isArray(input.candidates)
+    && 'primary' in input
+    && 'alternatives' in input
+    && Array.isArray(input.alternatives)
+    && 'relations' in input
+    && Array.isArray(input.relations)
+    && 'inputMode' in input
+    && (input.inputMode === 'registered' || input.inputMode === 'pitch-class')
+    && 'ambiguity' in input;
+}
+
+function isRegisteredNotes(input: unknown): input is readonly RegisteredNoteInput[] {
+  return Array.isArray(input);
+}
+
+function validateHarmonyInput(input: unknown, label: string): asserts input is HarmonyInput {
+  if (typeof input === 'string' || isRegisteredNotes(input) || isChordAnalysisResult(input)) return;
+  throw new ChordInputError(`${label} must be a chord symbol, registered-note array, or chord analysis result`);
+}
+
 export function resolveHarmonyInput(input: HarmonyInput, options: HarmonyOptions = {}): ChordAnalysisResult {
+  validateHarmonyInput(input, 'Harmony input');
   if (typeof input === 'string') return parseChordSymbol(input, options.grammar ?? 'standard').analysis;
-  if (typeof input === 'object' && input !== null && 'candidates' in input) return input as ChordAnalysisResult;
-  return analyzeChord(input as readonly RegisteredNoteInput[], { explain: true });
+  if (isChordAnalysisResult(input)) return input;
+  return analyzeChord(input, { explain: true });
 }
 
 function normalizedContext(input: NonNullable<HarmonyOptions['key']>, source: TonalContext['source']): TonalContext {
@@ -65,11 +90,44 @@ export function analyzeHarmony(input: HarmonyInput, options: HarmonyOptions = {}
   return { input: analysis, context, keyCandidates, primary, alternatives: primary ? candidates.slice(1) : [], candidates, unknown: !primary || primary.tonalScore < 0.5, evidence: primary?.evidence ?? ['No harmony candidate'] };
 }
 
-function progressionAnalyses(input: ProgressionInput, options: HarmonyOptions): Array<{ event: ProgressionEvent; analysis: ChordAnalysisResult }> {
+function isProgressionEvent(input: unknown): input is ProgressionEvent {
+  return typeof input === 'object' && input !== null && !Array.isArray(input) && 'input' in input;
+}
+
+function validateEventTick(value: number | undefined, label: string): void {
+  if (value !== undefined && (!Number.isSafeInteger(value) || value < 0)) {
+    throw new ChordInputError(`${label} must be a non-negative safe integer: ${value}`);
+  }
+}
+
+function normalizeProgressionEvents(input: unknown): ProgressionEvent[] {
+  if (!Array.isArray(input)) throw new ChordInputError('Progression input must be an array');
   return input.map((item, index) => {
-    const event: ProgressionEvent = typeof item === 'object' && !Array.isArray(item) && 'input' in item ? item : { input: item as HarmonyInput, id: `event-${index}` };
-    return { event: { ...event, id: event.id ?? `event-${index}` }, analysis: event.chord ?? resolveHarmonyInput(event.input, options) };
+    let event: ProgressionEvent;
+    if (isProgressionEvent(item)) {
+      validateHarmonyInput(item.input, `Progression event ${index} input`);
+      event = { ...item };
+    } else {
+      validateHarmonyInput(item, `Progression event ${index} input`);
+      event = { input: item, id: `event-${index}` };
+    }
+    if (event.chord !== undefined && !isChordAnalysisResult(event.chord)) {
+      throw new ChordInputError(`Progression event ${index} chord must be a chord analysis result`);
+    }
+    validateEventTick(event.start, `Progression event ${index} start`);
+    validateEventTick(event.end, `Progression event ${index} end`);
+    if (event.start !== undefined && event.end !== undefined && event.end < event.start) {
+      throw new ChordInputError(`Progression event ${index} end must be >= start`);
+    }
+    return { ...event, id: event.id ?? `event-${index}` };
   });
+}
+
+function progressionAnalyses(input: ProgressionInput, options: HarmonyOptions): Array<{ event: ProgressionEvent; analysis: ChordAnalysisResult }> {
+  return normalizeProgressionEvents(input).map((event) => ({
+    event,
+    analysis: event.chord ?? resolveHarmonyInput(event.input, options),
+  }));
 }
 
 function cadenceBonus(analyses: readonly ChordAnalysisResult[], context: TonalContext, weights: ReturnType<typeof resolvedWeights>): number {

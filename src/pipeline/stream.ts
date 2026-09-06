@@ -61,6 +61,9 @@ export async function* decodeMidiStream(chunks: AsyncIterable<Uint8Array>, optio
   const format = u16(headerPayload.subarray(0, 2));
   if (format !== 0 && format !== 1) throw new ChordInputError(`Unsupported MIDI format: ${format}`);
   const trackCount = u16(headerPayload.subarray(2, 4));
+  if ((format === 0 && trackCount !== 1) || (format === 1 && trackCount < 1)) {
+    throw new ChordInputError(`Invalid track count ${trackCount} for MIDI format ${format}`);
+  }
   const division = u16(headerPayload.subarray(4, 6));
   const singleHeader = join(asciiBytes('MThd'), be32(6), Uint8Array.of((format >>> 8) & 0xff, format & 0xff, 0, 1, (division >>> 8) & 0xff, division & 0xff));
   let nextSequence = 0;

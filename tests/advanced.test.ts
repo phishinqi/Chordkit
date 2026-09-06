@@ -18,6 +18,11 @@ describe('advanced analysis', () => {
     expect(result.candidates.some((candidate) => candidate.evidence.match === 'polychord')).toBe(true);
   });
 
+  it('does not emit self-polychords for octave-doubled chord structures', () => {
+    const candidates = analyzeChord(['C3', 'C4', 'E4', 'G4']).candidates;
+    expect(candidates.some((candidate) => candidate.name === 'C | C')).toBe(false);
+    expect(analyzeChord(['C3', 'C4', 'E4', 'G4', 'G5']).candidates.some((candidate) => candidate.name === 'C | C')).toBe(false);
+  });
   it('records canonical aliases for flat pitch classes', () => {
     const result = analyzeChord(['Db4', 'F4', 'Ab4']);
     expect(result.primary?.name).toBe('Db');

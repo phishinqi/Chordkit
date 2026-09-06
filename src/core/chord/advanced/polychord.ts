@@ -38,6 +38,7 @@ export function detectPolychord(notes: readonly NormalizedNote[], recognize: Str
     if (!lower || !upper || lower.score < 0.6 || upper.score < 0.6) continue;
     const upperStructure = primaryName(upper);
     const lowerStructure = primaryName(lower);
+    if (upper.rootPitchClass === lower.rootPitchClass && upper.quality === lower.quality) continue;
     const upperRootNote = upper.rootMidi === null
       ? upperNotes[0]!
       : upperNotes.find((note) => note.midi === upper.rootMidi) ?? upperNotes[0]!;

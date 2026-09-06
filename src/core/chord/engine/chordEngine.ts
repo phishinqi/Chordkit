@@ -150,11 +150,14 @@ function parsePitchClass(input: PitchClassInput): number {
     if (!Number.isInteger(input) || input < 0 || input > 11) throw new ChordInputError(`Pitch class must be an integer between 0 and 11: ${input}`);
     return input;
   }
-  if (!/^[A-Ga-g][#b]?$/.test(input.trim())) throw new ChordInputError(`Expected pitch class such as C, Db, or F#: ${input}`);
-  return pitchClassFromName(input.trim());
+  if (typeof input !== 'string') throw new ChordInputError(`Expected pitch class such as C, Db, or F#: ${String(input)}`);
+  const value = input.trim();
+  if (!/^[A-Ga-g][#b]?$/.test(value)) throw new ChordInputError(`Expected pitch class such as C, Db, or F#: ${input}`);
+  return pitchClassFromName(value);
 }
 
 export function analyzePitchClassesInternal(input: readonly PitchClassInput[], options: ChordAnalysisOptions = {}): ChordAnalysisResult {
+  if (!Array.isArray(input)) throw new ChordInputError('Pitch classes must be an array');
   if (!input.length) return emptyResult('pitch-class');
   const templates = resolvedTemplates(options);
   const pitchClasses = [...new Set(input.map(parsePitchClass).map(normalizePitchClass))].sort((a, b) => a - b);

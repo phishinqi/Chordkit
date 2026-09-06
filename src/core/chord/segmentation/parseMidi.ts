@@ -28,6 +28,9 @@ export function parseMidi(data: Uint8Array | ArrayBuffer): MidiParseResult {
   if (formatValue !== 0 && formatValue !== 1) throw new ChordInputError(`Unsupported MIDI format: ${formatValue}`);
   const format = formatValue as 0 | 1;
   const trackCount = reader.readU16();
+  if ((format === 0 && trackCount !== 1) || (format === 1 && trackCount < 1)) {
+    throw new ChordInputError(`Invalid track count ${trackCount} for MIDI format ${format}`);
+  }
   const division = reader.readU16();
   if ((division & 0x8000) !== 0) throw new ChordInputError('SMPTE time division is not supported');
   if (division === 0) throw new ChordInputError('PPQ time division cannot be zero');
@@ -60,6 +63,7 @@ export function parseMidi(data: Uint8Array | ArrayBuffer): MidiParseResult {
       }
       const base = { tick, track, sequence: sequence++, deltaTick };
       if (status === 0xff) {
+        runningStatus = null;
         const metaType = trackReader.readByte();
         const metaLength = trackReader.readVlq();
         const payload = trackReader.readBytes(metaLength);
@@ -68,7 +72,7 @@ export function parseMidi(data: Uint8Array | ArrayBuffer): MidiParseResult {
           const microseconds = (payload[0]! << 16) | (payload[1]! << 8) | payload[2]!;
           events.push({ ...base, type: 'tempoChange', bpm: bpmFromMicroseconds(microseconds) });
         } else if (metaType === 0x58) {
-          if (payload.length < 2) throw new ChordInputError('Invalid Time Signature meta event');
+          if (payload.length !== 4) throw new ChordInputError('Invalid Time Signature meta event');
           events.push({ ...base, type: 'timeSignatureChange', numerator: payload[0]!, denominator: 2 ** payload[1]! });
         } else if (metaType === 0x2f) {
           if (metaLength !== 0) throw new ChordInputError('End of Track meta event must have zero-length payload');

@@ -171,6 +171,24 @@ describe('MIDI parsing, timing, and chord timeline segmentation', () => {
     expect(() => parseMidi(Uint8Array.from([...ascii('MThd'), ...u32(6), ...u16(0), ...u16(1), ...u16(480), ...ascii('MTrk'), ...u32(4), 0x81, 0x81, 0x81, 0x81]))).toThrow(ChordInputError);
   });
 
+  it('validates SMF track counts and time-signature payloads', () => {
+    expect(() => parseMidi(smf(0, []))).toThrow(ChordInputError);
+    expect(() => parseMidi(smf(0, [[], []]))).toThrow(ChordInputError);
+    expect(() => parseMidi(smf(1, []))).toThrow(ChordInputError);
+    for (const payloadLength of [0, 1, 2, 3, 5]) {
+      const payload = Array.from({ length: payloadLength }, (_, index) => index + 1);
+      const malformed = [...vlq(0), 0xff, 0x58, ...vlq(payloadLength), ...payload, ...endTrack()];
+      expect(() => parseMidi(smf(0, [malformed]))).toThrow(ChordInputError);
+    }
+    const valid = parseMidi(smf(0, [[...signature(0, 6, 3), ...endTrack()]]));
+    expect(valid.timing.timeSignatures[0]).toMatchObject({ numerator: 6, denominator: 8 });
+  });
+
+  it('clears running status after metadata events', () => {
+    const invalid = [...noteOn(0, 60), ...vlq(0), 0xff, 0x01, 0x01, 0x41, ...vlq(0), 0x3e, 0x64, ...endTrack()];
+    expect(() => parseMidi(smf(0, [invalid]))).toThrow(ChordInputError);
+  });
+
   it('validates every direct MIDI event variant at both timeline entry points', () => {
     const invalid: MidiEvent[] = [
       event('noteOn', 0, 0, { channel: 0, midi: 128, velocity: 100 }),
@@ -220,6 +238,21 @@ describe('MIDI parsing, timing, and chord timeline segmentation', () => {
     }
   });
 
+  it('requires flush ticks to be non-negative safe integers', () => {
+    const tracker = new ActiveNoteTracker();
+    tracker.push(event('noteOn', 0, 0, { channel: 0, midi: 60, velocity: 100 }));
+    for (const endTick of [-1, 0.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1]) {
+      expect(() => tracker.flush(endTick)).toThrow(ChordInputError);
+    }
+    expect(() => tracker.flush(Number.MAX_SAFE_INTEGER)).not.toThrow();
+    expect(tracker.noteSpans[0]).toMatchObject({ startTick: 0, endTick: Number.MAX_SAFE_INTEGER });
+  });
+  it('bounds timeline grid construction for impractically large ranges', () => {
+    const span: NoteSpan = { track: 0, channel: 0, midi: 60, startTick: 0, endTick: Number.MAX_SAFE_INTEGER, velocity: 100, sustained: false };
+    expect(() => buildTimeline([span])).toThrow(ChordInputError);
+    expect(() => buildTimeline([span], undefined, { endTick: Number.MAX_SAFE_INTEGER })).toThrow(ChordInputError);
+    expect(() => buildTimeline([event('noteOn', 0, 0, { channel: 0, midi: 60, velocity: 100 })], undefined, { endTick: Number.MAX_SAFE_INTEGER })).toThrow(ChordInputError);
+  });
   it('rejects bytes after an EOT marker', () => {
     const track = [...noteOn(0, 60), ...endTrack(), ...noteOn(0, 64)];
     expect(() => parseMidi(smf(0, [track]))).toThrow(ChordInputError);
