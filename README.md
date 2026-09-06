@@ -49,11 +49,13 @@ console.log(suspended.primary?.name); // Csus2
 
 const pitchClasses = analyzePitchClasses([0, 2, 4, 7]);
 console.log(pitchClasses.inputMode); // pitch-class
-// Compound-interval names remain unavailable until register information is supplied.
+// Conventional extension-like names may appear, but this input does not prove compound-register evidence.
 console.log(pitchClasses.ambiguity);
 ```
 
 `analyzeChord()` accepts registered inputs only: MIDI integers from `0` through `127`, or octave-qualified note names. Use `analyzePitchClasses()` when octave information is unavailable; it deliberately avoids claiming compound-interval semantics that cannot be proven from pitch classes alone.
+
+For register-sensitive voicings, `analyzeChord(['C4', 'F4', 'Bb4', 'Eb5'])` recognizes `Cquartal` and `analyzeChord(['C3', 'G3', 'D4', 'A4'])` recognizes `Cquintal` only when the notes form those literal, ascending root-position stacks. Inversions, octave-spread voicings, and pitch-class-only input retain their ordinary candidates instead. `sus4(add6)` is a pitch-class quality, while `sus2(add9)` requires a registered compound ninth: `['C3', 'D3', 'G3', 'D4']` is `Csus2(add9)`, whereas a simple `['C4', 'D4', 'G4']` is `Csus2`.
 
 ### Core API
 

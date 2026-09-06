@@ -1,5 +1,20 @@
 import type { ChordCandidate } from '../types';
 
+const EXTENSION_INTERVALS: Record<number, number> = {
+  9: 14,
+  11: 17,
+  13: 21,
+};
+
+function compoundExtensionCount(candidate: ChordCandidate): number {
+  return candidate.extensions.filter((degree) => {
+    const interval = EXTENSION_INTERVALS[degree];
+    return interval !== undefined && candidate.intervalAnalysis.compoundIntervals.some(
+      (observed) => observed % 12 === interval % 12,
+    );
+  }).length;
+}
+
 export interface RankingOptions {
   maxCandidates?: number;
   polyChordFirst?: boolean;
@@ -23,6 +38,16 @@ export function rankCandidates(candidates: readonly ChordCandidate[], options: R
       const aOriginal = a.evidence.match !== 'polychord' && a.evidence.inversion === 0 && a.score >= originalFirstRatio;
       const bOriginal = b.evidence.match !== 'polychord' && b.evidence.inversion === 0 && b.score >= originalFirstRatio;
       if (aOriginal !== bOriginal) return aOriginal ? -1 : 1;
+    }
+    const sameRootAndBass = a.rootPitchClass === b.rootPitchClass && a.bass === b.bass;
+    const sameExactRegisteredMatch = a.evidence.match === 'exact'
+      && b.evidence.match === 'exact'
+      && a.rootMidi !== null
+      && b.rootMidi !== null;
+    if (sameRootAndBass && sameExactRegisteredMatch && a.score === b.score && a.complexity === b.complexity) {
+      const aCompoundExtensions = compoundExtensionCount(a);
+      const bCompoundExtensions = compoundExtensionCount(b);
+      if (aCompoundExtensions !== bCompoundExtensions) return bCompoundExtensions - aCompoundExtensions;
     }
     return b.score - a.score || a.complexity - b.complexity || a.name.localeCompare(b.name);
   }).slice(0, options.maxCandidates ?? 12);

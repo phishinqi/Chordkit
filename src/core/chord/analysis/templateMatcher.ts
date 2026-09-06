@@ -36,6 +36,9 @@ export function matchTemplates(
   return templates.filter((template) => {
     const expectedPitchClasses = foldDuplicatePitchClasses(template.intervals);
     if (!sameIntervals(folded, expectedPitchClasses)) return false;
+    if (template.registerRequirement === 'literal-stack') {
+      return sameIntervals(registerIntervals, template.intervals);
+    }
     if (template.registerRequirement !== 'compound') return true;
     return registeredIntervalsMatch(registerIntervals, template.intervals);
   });
@@ -43,6 +46,7 @@ export function matchTemplates(
 
 export function matchPitchClassTemplates(intervals: readonly number[], templates: readonly ChordTemplate[]): ChordTemplate[] {
   return templates.filter((template) => {
+    if (template.registerRequirement === 'literal-stack' || template.pitchClassEligible === false) return false;
     const expected = foldDuplicatePitchClasses(template.intervals);
     return sameIntervals(foldDuplicatePitchClasses(intervals), expected)
       && template.intervals.length === intervals.length;

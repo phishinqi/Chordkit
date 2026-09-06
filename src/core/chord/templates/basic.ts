@@ -8,6 +8,7 @@ export const BASIC_TEMPLATES: ChordTemplate[] = [
   { id: 'power', quality: '5', intervals: [0, 7], family: 'basic' },
   { id: 'sus2', quality: 'sus2', intervals: [0, 2, 7], family: 'basic' },
   { id: 'sus4', quality: 'sus4', intervals: [0, 5, 7], family: 'basic' },
+  { id: 'sus4-add6', quality: 'sus4(add6)', intervals: [0, 5, 7, 9], family: 'basic' },
   { id: 'add4', quality: 'add4', intervals: [0, 4, 5, 7], family: 'basic' },
   { id: 'add6', quality: '6', intervals: [0, 4, 7, 9], family: 'basic', legacyAliases: ['6'] },
   { id: 'm-add6', quality: 'm6', intervals: [0, 3, 7, 9], family: 'basic', legacyAliases: ['m6'] },
