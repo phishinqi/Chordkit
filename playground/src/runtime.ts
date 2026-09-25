@@ -3,8 +3,9 @@ import * as midi from '@chordkit/midi';
 import * as pipeline from '@chordkit/pipeline';
 import * as legacy from '@chordkit/legacy';
 import * as harmony from '@chordkit/harmony';
+import * as scale from '@chordkit/scale';
 
-export const runtimes = { core, midi, pipeline, legacy, harmony } as const;
+export const runtimes = { core, midi, pipeline, legacy, harmony, scale } as const;
 export type RuntimeModule = keyof typeof runtimes;
 export const DEFAULT_NOTES = ['C3', 'E3', 'G3', 'D4'];
 export const DEFAULT_EVENTS = [

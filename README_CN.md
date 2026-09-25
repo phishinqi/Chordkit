@@ -267,6 +267,25 @@ console.log(result.globalContext.label);
 
 详见 [Harmony 分析](docs/HARMONY.md)。
 
+### 音阶识别
+
+独立的 **17 种音阶** sidecar 只比较音级集合，不推断唯一主音或调性。至少需要 **3 个不同音级**，只返回完整匹配或输入为真子集的缺音推荐，**不容忍不兼容音**。自动模式保留所有完整对称解释；半音阶**仅完整十二音匹配**。旋律小调指**上行**形式。
+
+```ts
+import { analyzeScale, analyzeScalePitchClasses } from '@phishinqi/chordkit/scale';
+
+const registered = analyzeScale([60, 62, 64, 65, 67, 69, 71]); // MIDI 0..127
+const modes = analyzeScalePitchClasses(['C', 'D', 'E', 'F', 'G', 'A', 'B']);
+// 保留 C 大调、A 自然小调等全部 7 种完整解释，不返回唯一 primary/key。
+const suggestions = analyzeScalePitchClasses(['C', 'E', 'G']).suggestions;
+// 包含缺 A、D 的 A 小调五声音阶，tonicMissing: true。
+
+```
+
+analyzeScale 接受 MIDI 整数或带八度音名；analyzeScalePitchClasses 接受 **0..11** 音级整数或无八度音名，两个入口不能混用整数范围。均支持单/双升降号及 Unicode 符号。带八度音名遵循正确等音算术：**B#3 = C4 = 60**、**Cb4 = B3 = 59**。显式字符串主音保留拼写（F# 大调包含 **E#**，即使 preferFlats 为 true）；自动/数字主音由 preferFlats 选择拼写。输出 notes 可连同原 tonic 传回音级入口，支持拼写往返。
+
+缺音推荐按缺音数量升序，SDK **不截断候选**。Playground 默认显示前 **8 条推荐**，可展开全部；预览和试听不修改输入，试听仅显式点击后使用 Web Audio。音阶功能**不分析 MIDI 时间线，不发送系统 MIDI**。无效输入抛出 **ScaleInputError**（错误码 **INVALID_SCALE_INPUT**）。完整参数、返回字段、17 种目录及示例见 [音阶 API](docs/SCALES.md)。
+
 ### 旧版兼容 API（Legacy API）
 
 在 `0.x` 版本期间，可通过 `@phishinqi/chordkit/legacy` 引入兼容适配器：
@@ -308,6 +327,7 @@ npm run ci
 
 * [架构设计](https://www.google.com/search?q=docs/ARCHITECTURE.md)
 * [MIDI 时间线](https://www.google.com/search?q=docs/MIDI-TIMELINE.md)
+* [音阶识别](docs/SCALES.md)
 * [Harmony 分析](docs/HARMONY.md)
 * [旧版迁移指南](https://www.google.com/search?q=docs/LEGACY-MIGRATION.md)
 * [测试说明](https://www.google.com/search?q=docs/TESTING.md)

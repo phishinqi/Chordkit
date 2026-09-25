@@ -33,6 +33,11 @@
       "types": "./dist/harmony.d.ts",
       "import": "./dist/harmony.js",
       "require": "./dist/harmony.cjs"
+    },
+    "./scale": {
+      "types": "./dist/scale.d.ts",
+      "import": "./dist/scale.js",
+      "require": "./dist/scale.cjs"
     }
   },
   "files": [

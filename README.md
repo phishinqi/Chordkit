@@ -290,6 +290,25 @@ console.log(result.globalContext.label);
 
 See [Harmony analysis](docs/HARMONY.md).
 
+### Scale recognition
+
+The independent **17-scale** sidecar matches pitch-class collections, not a unique key or primary candidate. Both entry points require at least **3 distinct pitch classes**, return exact matches or compatible subset suggestions only, and never tolerate incompatible input tones. Automatic mode preserves all symmetric interpretations; chromatic is **exact-only**. Melodic minor means its **ascending** form.
+
+```ts
+import { analyzeScale, analyzeScalePitchClasses } from '@phishinqi/chordkit/scale';
+
+const registered = analyzeScale([60, 62, 64, 65, 67, 69, 71]); // MIDI 0..127
+const modes = analyzeScalePitchClasses(['C', 'D', 'E', 'F', 'G', 'A', 'B']);
+// All 7 exact modes, including C major and A natural minor; no primary/key.
+const suggestions = analyzeScalePitchClasses(['C', 'E', 'G']).suggestions;
+// Includes A minor pentatonic, missing A and D (tonicMissing: true).
+
+```
+
+The registered entry accepts MIDI integers or octave-qualified names; the pitch-class entry accepts integers **0..11** or octave-free names. Both support single/double accidentals and Unicode equivalents. Registered spelling uses proper octave arithmetic: **B#3 = C4 = 60**, **Cb4 = B3 = 59**. Explicit string tonics retain spelling (F# major includes **E#** even with preferFlats enabled); automatic/numeric tonic names follow preferFlats. Candidate notes can round-trip through the pitch-class entry with their tonic.
+
+Suggestions are sorted by missing-note count, and the SDK is **untruncated**. The Playground initially shows **8 suggestions**, expandable to all; preview/audition do not edit input. Scale audition is explicit Web Audio only, with no MIDI-timeline analysis or system-MIDI output. Invalid input throws **ScaleInputError** (code **INVALID_SCALE_INPUT**). See [Scale API, catalog, examples and spelling rules](docs/SCALES.md).
+
 ### Interactive Playground
 
 Try the public Beta at **https://phishinqi.github.io/Chordkit/**. The static Playground runs Chordkit entirely in the browser and includes Core, MIDI, Pipeline, Legacy, stream, raw JSON, and API Explorer workbenches. See [Playground documentation](docs/PLAYGROUND.md).
@@ -317,6 +336,7 @@ npm run ci
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [MIDI timeline](docs/MIDI-TIMELINE.md)
+- [Scale recognition](docs/SCALES.md)
 - [Harmony analysis](docs/HARMONY.md)
 - [Legacy migration](docs/LEGACY-MIGRATION.md)
 - [Testing](docs/TESTING.md)

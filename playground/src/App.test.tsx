@@ -1,5 +1,5 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import * as core from '@chordkit/core';
 
 class FakeWorker {
@@ -9,6 +9,7 @@ class FakeWorker {
 
 beforeAll(() => { Object.defineProperty(globalThis, 'Worker', { value: FakeWorker, configurable: true }); });
 beforeEach(() => { localStorage.clear(); history.replaceState(null, '', '/'); });
+afterEach(cleanup);
 
 describe('Playground home', () => {
   it('renders the Cadd9 starter analysis and opens the workbench', async () => {
@@ -47,8 +48,43 @@ describe('Playground home', () => {
     expect(screen.getAllByText('分析注册音符').length).toBeGreaterThan(0);
     fireEvent.click(screen.getAllByText('运行')[0]!);
     expect(await screen.findByText('运行成功')).toBeTruthy();
-    expect(screen.getAllByText('Cadd9').length).toBeGreaterThan(0);
+    const output = document.querySelector('.docs-result pre');
+    expect(JSON.parse(output!.textContent!).primary.name).toBe('Cadd9');
   });
+
+  it('documents parameters, response fields, errors, and FAQ for Docs examples', async () => {
+    const { default: App } = await import('./App');
+    render(<App />);
+    fireEvent.click(screen.getAllByText('文档 / Docs')[0]!);
+    expect(screen.getByRole('heading', { name: '参数字典' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '响应字段说明' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '错误码与处理' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '常见问题' })).toBeTruthy();
+    expect(within(screen.getByRole('table', { name: '参数字典' })).getByRole('columnheader', { name: '类型' })).toBeTruthy();
+    expect(screen.getAllByText('ChordInputError').length).toBeGreaterThan(0);
+    expect(screen.getByText('参数 JSON 的顶层格式是什么？')).toBeTruthy();
+  });
+
+  it('updates the Docs schema when a different example is selected', async () => {
+    const { default: App } = await import('./App');
+    render(<App />);
+    fireEvent.click(screen.getAllByText('文档 / Docs')[0]!);
+    fireEvent.click(screen.getAllByText('转换 tick 到毫秒')[0]!);
+    expect(screen.getByText('timing.ppq')).toBeTruthy();
+    expect(screen.getByText('每四分音符 ticks 数。')).toBeTruthy();
+    expect(screen.queryByText('options.explain')).toBeNull();
+  });
+
+  it('renders the Docs field documentation in English', async () => {
+    const { default: App } = await import('./App');
+    render(<App />);
+    fireEvent.click(screen.getByText('EN'));
+    fireEvent.click(screen.getByText('Docs'));
+    expect(screen.getByRole('heading', { name: 'Parameters' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Response fields' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Frequently asked questions' })).toBeTruthy();
+  });
+
 
   it('exposes add-to-Harmony actions for analyzed candidates', async () => {
     const { ResultCard } = await import('./App');
