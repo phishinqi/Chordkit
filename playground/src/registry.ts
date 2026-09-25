@@ -4,6 +4,7 @@ export type ApiKind = 'function' | 'class' | 'constant' | 'type';
 export interface ApiEntry { id: string; module: RuntimeModule; name: string; kind: ApiKind; summary: string; defaultArgs?: unknown[]; }
 
 const typeCatalog = [
+  'ScaleType', 'ScaleNoteInput', 'ScaleDefinition', 'ScaleAnalysisOptions', 'ScaleCandidate', 'ScaleAnalysisResult',
   'ChordAnalysisOptions', 'ChordAnalysisResult', 'ChordCandidate', 'ChordRelation', 'ChordTemplate', 'IntervalAnalysis',
   'MidiEvent', 'MidiParseResult', 'NoteSpan', 'ChordWindow', 'ChordTimelineDraft', 'ChordTimelineSegment', 'ChordTimeline', 'TimelineOptions',
   'AnalyzerStrategy', 'AnalyzerConfig', 'AnalysisPipelineConfig', 'TimelineAnalysisSnapshot', 'TimelineStreamControl', 'LegacyOptions',
@@ -11,6 +12,9 @@ const typeCatalog = [
 ];
 
 const args: Record<string, unknown[]> = {
+  'scale.analyzeScale': [['C4','D4','E4','F4','G4','A4','B4']],
+  'scale.analyzeScalePitchClasses': [['C','E','G']],
+  'scale.ScaleInputError': ['Invalid scale input'],
   'core.analyzeChord': [DEFAULT_NOTES, { explain: true }],
   'core.analyzePitchClasses': [['C', 'E', 'G']],
   'core.analyzePitchClassesInternal': [[0, 4, 7]],
@@ -48,7 +52,7 @@ export const apiRegistry: ApiEntry[] = (Object.entries(runtimes) as Array<[Runti
   Object.entries(runtime).map(([name, value]) => ({ id: `${module}.${name}`, module, name, kind: kindOf(value), summary: `${module} export ${name}`, defaultArgs: args[`${module}.${name}`] ?? [] })),
 ).sort((left, right) => left.id.localeCompare(right.id));
 
-export const schemaEntries: ApiEntry[] = typeCatalog.map((name) => ({ id: `type.${name}`, module: 'core', name, kind: 'type', summary: `TypeScript schema: ${name}` }));
+export const schemaEntries: ApiEntry[] = typeCatalog.map((name) => ({ id: `type.${name}`, module: name.startsWith('Scale') ? 'scale' : 'core', name, kind: 'type', summary: `TypeScript schema: ${name}` }));
 export const allCatalog = [...apiRegistry, ...schemaEntries];
 
 export function callableExportIds(): string[] { return apiRegistry.filter((entry) => entry.kind === 'function' || entry.kind === 'class').map((entry) => entry.id); }

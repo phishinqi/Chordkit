@@ -23,6 +23,9 @@
       ],
       "@chordkit/harmony": [
         "src/harmony/index.ts"
+      ],
+      "@chordkit/scale": [
+        "src/scale/index.ts"
       ]
     }
   },

@@ -11,6 +11,7 @@ export default defineConfig({
     '@chordkit/pipeline': resolve(__dirname, '../src/pipeline/index.ts'),
     '@chordkit/legacy': resolve(__dirname, '../src/legacy/index.ts'),
     '@chordkit/harmony': resolve(__dirname, '../src/harmony/index.ts'),
+    '@chordkit/scale': resolve(__dirname, '../src/scale/index.ts'),
   } },
   test: { environment: 'jsdom', include: ['src/**/*.test.{ts,tsx}'] },
 });

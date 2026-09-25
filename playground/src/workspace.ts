@@ -1,4 +1,4 @@
-export interface WorkspaceState { notes: string[]; mode: 'loose' | 'strict'; flats: boolean; profile: 'general' | 'pop' | 'jazz' | 'classical'; }
+export interface WorkspaceState { notes: string[]; mode: 'loose' | 'strict'; flats: boolean; profile: 'general' | 'pop' | 'jazz' | 'classical'; scaleTonic?: string; }
 export const defaultWorkspace: WorkspaceState = { notes: ['C3', 'E3', 'G3', 'D4'], mode: 'loose', flats: false, profile: 'jazz' };
 const key = 'chordkit-playground-workspace-v1';
 export function loadWorkspace(): WorkspaceState {

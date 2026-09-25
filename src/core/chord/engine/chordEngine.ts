@@ -86,6 +86,17 @@ function alteredDominantCandidate(root: NormalizedNote, bass: NormalizedNote, an
   if (alterations.length < 2) return null;
   const hasFifthFamily = hasInterval(analysis.absoluteIntervals, 6) || hasInterval(analysis.absoluteIntervals, 7) || hasInterval(analysis.absoluteIntervals, 8);
   const quality = `7(${[...alterations, ...(hasFifthFamily ? [] : ['no5'])].join(',')})`;
+  // Validate coverage from the named degrees, not the observed template or
+  // inferred extension metadata. Altered fifths replace the natural fifth;
+  // compound #11/b13 do not. Missing implied tones remain allowed.
+  const namedPitchClasses = new Set([0, 4, 10]);
+  if (hasFifthFamily && !alterations.includes('b5') && !alterations.includes('#5')) namedPitchClasses.add(7);
+  for (const [degree, pitchClass] of Object.entries({ b9: 1, '#9': 3, b5: 6, '#11': 6, '#5': 8, b13: 8 })) {
+    if (alterations.includes(degree)) namedPitchClasses.add(pitchClass);
+  }
+  // absoluteIntervals uses abs(), so below-root notes must be checked using
+  // their actual directed pitch-class distance instead.
+  if (notes.some((note) => !namedPitchClasses.has(normalizePitchClass(note.pitchClass - root.pitchClass)))) return null;
   const template: ChordTemplate = {
     id: `altered-dominant-${alterations.join('-')}${hasFifthFamily ? '' : '-no5'}`,
     quality,
