@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 
 export default defineConfig({
   root: __dirname,
-  base: process.env.GITHUB_ACTIONS ? '/Chordkit/' : '/',
+  base: '/',
   plugins: [react()],
   resolve: { alias: {
     '@chordkit/core': resolve(__dirname, '../src/index.ts'),
