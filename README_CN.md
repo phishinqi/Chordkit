@@ -327,13 +327,13 @@ npm run ci
 
 ### 项目文档
 
-* [架构设计](https://www.google.com/search?q=docs/ARCHITECTURE.md)
-* [MIDI 时间线](https://www.google.com/search?q=docs/MIDI-TIMELINE.md)
+* [架构设计](docs/ARCHITECTURE.md)
+* [MIDI 时间线](MIDI-TIMELINE.md)
 * [音阶识别](docs/SCALES.md)
 * [Harmony 分析](docs/HARMONY.md)
-* [旧版迁移指南](https://www.google.com/search?q=docs/LEGACY-MIGRATION.md)
-* [测试说明](https://www.google.com/search?q=docs/TESTING.md)
-* [贡献指南](https://www.google.com/search?q=CONTRIBUTING.md)
+* [旧版迁移指南](docs/LEGACY-MIGRATION.md)
+* [测试说明](docs/TESTING.md)
+* [贡献指南](CONTRIBUTING.md)
 * [更新日志](CHANGELOG.md)
 
 ### 开源协议
